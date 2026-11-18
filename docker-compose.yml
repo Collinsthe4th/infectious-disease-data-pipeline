@@ -1,0 +1,53 @@
+# One command to try everything:
+#   docker compose up -d db dashboard        # database + dashboard on http://localhost:8501
+#   docker compose run --rm app demo         # load the SYNTHETIC demo dataset
+#   docker compose run --rm app run          # a real weekly run against ncdc.gov.ng
+#   docker compose --profile scheduler up -d # weekly + daily runs without Airflow
+
+x-app: &app
+  build: .
+  image: disease-pipeline:latest
+  environment:
+    DATABASE_URL: postgresql+psycopg://pipeline:pipeline@db:5432/disease_surveillance
+  volumes:
+    - ./data:/app/data
+  depends_on:
+    db:
+      condition: service_healthy
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: pipeline
+      POSTGRES_PASSWORD: pipeline
+      POSTGRES_DB: disease_surveillance
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pipeline -d disease_surveillance"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  app:
+    <<: *app
+    command: ["status"]
+
+  dashboard:
+    <<: *app
+    entrypoint: ["streamlit", "run", "dashboard/app.py", "--server.port=8501", "--server.address=0.0.0.0",
+                 "--server.headless=true", "--browser.gatherUsageStats=false"]
+    ports:
+      - "8501:8501"
+
+  scheduler:
+    <<: *app
+    profiles: ["scheduler"]
+    entrypoint: ["python", "scripts/scheduler.py"]
+    restart: unless-stopped
+
+volumes:
+  pgdata:

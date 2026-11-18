@@ -1,0 +1,56 @@
+name: NCDC parse check
+
+# Downloads the newest real reports from ncdc.gov.ng and runs the parser on
+# them WITHOUT a database. It answers: "does the parser still read NCDC's
+# current layout?" Run it by hand (Actions tab -> NCDC parse check -> Run
+# workflow); it also runs weekly and whenever the parser changes.
+
+on:
+  workflow_dispatch:
+    inputs:
+      per_disease:
+        description: "Reports to download per disease"
+        default: "2"
+      diseases:
+        description: "Comma-separated codes (blank = all seven)"
+        default: ""
+  schedule:
+    - cron: "30 6 * * 1"   # Mondays 07:30 West Africa Time
+  push:
+    branches: [main]
+    paths: ["src/extraction/**", "src/ingestion/**", ".github/workflows/ncdc-parse-check.yml"]
+
+jobs:
+  parse-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      REQUEST_DELAY_S: "3"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install requests beautifulsoup4 pdfplumber camelot-py pandas numpy scipy reportlab
+      - name: Download and parse the newest NCDC reports
+        run: |
+          ARGS="--download ${{ github.event.inputs.per_disease || '2' }}"
+          if [ -n "${{ github.event.inputs.diseases }}" ]; then ARGS="$ARGS --diseases ${{ github.event.inputs.diseases }}"; fi
+          python -m src.orchestration.cli --plain-logs parse-check $ARGS --json-out parse_report.json | tee parse_log.txt
+      - name: Summary
+        if: always()
+        run: |
+          echo '## NCDC parse check' >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          tail -n 60 parse_log.txt >> "$GITHUB_STEP_SUMMARY" || true
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ncdc-parse-check
+          path: |
+            parse_report.json
+            parse_log.txt
+            data/raw/parse_check/**/*.pdf
+          retention-days: 14

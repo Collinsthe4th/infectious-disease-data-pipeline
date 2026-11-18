@@ -1,0 +1,65 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: test_pipeline
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U test" --health-interval 5s --health-timeout 5s --health-retries 20
+    env:
+      TEST_DATABASE_URL: postgresql+psycopg://test:test@localhost:5432/test_pipeline
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install dependencies
+        run: pip install -r requirements.txt pytest
+      - name: Unit tests
+        run: pytest tests/unit -q
+      - name: Integration tests (PostgreSQL, full demo run, dashboard pages)
+        run: pytest tests/integration -q -x --durations=10
+      - name: Schema smoke test with psql
+        run: |
+          sudo apt-get install -y -qq postgresql-client >/dev/null
+          psql "postgresql://test:test@localhost:5432/test_pipeline" -v ON_ERROR_STOP=1 -q -f src/storage/schema.sql
+          psql "postgresql://test:test@localhost:5432/test_pipeline" -v ON_ERROR_STOP=1 -f tests/integration/sql/schema_smoke_test.sql
+
+  lint:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install ruff && ruff check src tests dashboard scripts
+
+  docker:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the image
+        run: docker build -t disease-pipeline:ci .
+      - name: CLI starts inside the image
+        run: docker run --rm disease-pipeline:ci --help
