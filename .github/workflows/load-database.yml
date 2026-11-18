@@ -1,0 +1,49 @@
+name: Load data into Supabase
+
+# Fills YOUR database (the one the Streamlit dashboard reads) without needing a computer.
+# One-time setup: Settings -> Secrets and variables -> Actions -> New repository secret
+#   Name: DATABASE_URL   Value: your Supabase *Session pooler* connection string
+# Then: Actions tab -> Load data into Supabase -> Run workflow -> choose what to load.
+
+on:
+  workflow_dispatch:
+    inputs:
+      what:
+        description: "What to load"
+        type: choice
+        default: demo
+        options:
+          - demo            # synthetic data, every feature (about 10 minutes)
+          - real-trial      # 3 newest real NCDC reports per disease
+          - real-weekly     # a normal weekly run against ncdc.gov.ng
+          - real-backfill   # full 2021-2026 history (several hours)
+          - analytics-only  # recompute trends, alerts and forecasts
+
+jobs:
+  load:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11", cache: pip }
+      - run: pip install -r requirements.txt
+      - name: Check the secret is set
+        run: |
+          if [ -z "$DATABASE_URL" ]; then echo "::error::Add the DATABASE_URL repository secret first (see the top of this file)"; exit 1; fi
+      - name: Create tables (safe to repeat)
+        run: python -m src.orchestration.cli --plain-logs init-db
+      - name: Load
+        run: |
+          case "${{ github.event.inputs.what }}" in
+            demo)           python -m src.orchestration.cli --plain-logs demo ;;
+            real-trial)     python -m src.orchestration.cli --plain-logs backfill --max-files 3 ;;
+            real-weekly)    python -m src.orchestration.cli --plain-logs run ;;
+            real-backfill)  python -m src.orchestration.cli --plain-logs backfill ;;
+            analytics-only) python -m src.orchestration.cli --plain-logs analytics ;;
+          esac
+      - name: Summary
+        if: always()
+        run: python -m src.orchestration.cli --plain-logs status | tee -a "$GITHUB_STEP_SUMMARY"

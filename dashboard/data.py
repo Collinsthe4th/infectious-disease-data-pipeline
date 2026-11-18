@@ -19,7 +19,13 @@ TTL = int(os.environ.get("DASHBOARD_CACHE_SECONDS", "300"))
 
 @st.cache_resource
 def engine():
-    return get_engine()
+    """Database connection. On Streamlit Cloud put DATABASE_URL in the app's Secrets."""
+    url = os.environ.get("DATABASE_URL")
+    try:
+        url = st.secrets.get("DATABASE_URL", url)
+    except Exception:  # no secrets file locally
+        pass
+    return get_engine(url)
 
 
 def query(sql: str, **params) -> pd.DataFrame:

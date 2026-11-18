@@ -7,6 +7,8 @@ An automated data pipeline that collects the Nigeria Centre for Disease Control 
 [![CI](https://github.com/Collinsthe4th/infectious-disease-data-pipeline/actions/workflows/ci.yml/badge.svg)](https://github.com/Collinsthe4th/infectious-disease-data-pipeline/actions/workflows/ci.yml)
 [![NCDC parse check](https://github.com/Collinsthe4th/infectious-disease-data-pipeline/actions/workflows/ncdc-parse-check.yml/badge.svg)](https://github.com/Collinsthe4th/infectious-disease-data-pipeline/actions/workflows/ncdc-parse-check.yml)
 
+> **New here? Read [START_HERE.md](START_HERE.md)** (plain-language overview, which file does what, and how to connect Supabase and Streamlit). **Results:** [results/README.md](results/README.md).
+
 ## What it does
 
 - **Collects** NCDC situation reports for seven priority diseases (Lassa fever, cholera, measles, cerebrospinal meningitis, yellow fever, diphtheria, mpox), politely and without ever storing the same file twice.

@@ -13,6 +13,13 @@ from pathlib import Path
 REPO_ROOT: Path = Path(__file__).resolve().parents[2]
 
 
+def _normalise_url(url: str) -> str:
+    for prefix in ("postgresql://", "postgres://"):
+        if url.startswith(prefix):
+            return "postgresql+psycopg://" + url[len(prefix):]
+    return url
+
+
 def _env_int(name: str, default: int) -> int:
     value = os.environ.get(name)
     return int(value) if value not in (None, "") else default
@@ -35,9 +42,9 @@ class Settings:
     """All tunable settings for one pipeline process."""
 
     database_url: str = field(
-        default_factory=lambda: os.environ.get(
+        default_factory=lambda: _normalise_url(os.environ.get(
             "DATABASE_URL", "postgresql+psycopg://pipeline:pipeline@localhost:5432/disease_surveillance"
-        )
+        ))
     )
     data_dir: Path = field(default_factory=lambda: Path(os.environ.get("DATA_DIR", REPO_ROOT / "data")))
 

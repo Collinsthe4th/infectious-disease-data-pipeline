@@ -15,14 +15,23 @@ SCHEMA_SQL: Path = Path(__file__).with_name("schema.sql")
 DEFAULT_URL = "postgresql+psycopg://pipeline:pipeline@localhost:5432/disease_surveillance"
 
 
+def normalise_url(url: str) -> str:
+    """Accept the plain URL Supabase/Heroku give (``postgresql://`` or ``postgres://``)
+    and point SQLAlchemy at the psycopg 3 driver this project installs."""
+    for prefix in ("postgresql://", "postgres://"):
+        if url.startswith(prefix):
+            return "postgresql+psycopg://" + url[len(prefix):]
+    return url
+
+
 def get_database_url() -> str:
-    """Return the SQLAlchemy URL from ``DATABASE_URL`` or the local default."""
-    return os.environ.get("DATABASE_URL", DEFAULT_URL)
+    """``DATABASE_URL`` from the environment (Streamlit Cloud exposes its secrets this way)."""
+    return normalise_url(os.environ.get("DATABASE_URL", DEFAULT_URL))
 
 
 def get_engine(url: str | None = None, *, echo: bool = False) -> Engine:
     """Create a SQLAlchemy engine with pre-ping enabled for long-lived jobs."""
-    return create_engine(url or get_database_url(), echo=echo, pool_pre_ping=True, future=True)
+    return create_engine(normalise_url(url or get_database_url()), echo=echo, pool_pre_ping=True, future=True)
 
 
 def apply_schema(engine: Engine, schema_path: Path = SCHEMA_SQL) -> None:

@@ -1,0 +1,7 @@
+# Light requirements for Streamlit Community Cloud (the dashboard only reads the database).
+streamlit>=1.36,<2
+plotly>=5.20,<7
+pandas>=2.2,<4
+numpy>=1.26,<3
+SQLAlchemy>=2.0.30,<2.1
+psycopg[binary]>=3.1,<4
