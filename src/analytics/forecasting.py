@@ -170,7 +170,7 @@ class NegativeBinomialGLM(BaseForecaster):
             X = sm.add_constant(train[FEATURES], has_constant="add")
             try:
                 model = sm.GLM(train["count_target"], X, family=sm.families.NegativeBinomial(alpha=1.0)).fit()
-                pred = float(model.predict(sm.add_constant(last, has_constant="add"))[0])
+                pred = float(np.asarray(model.predict(sm.add_constant(last, has_constant="add")))[0])
             except Exception as exc:  # convergence problems on tiny or flat series
                 log.warning("negative binomial failed at h=%d: %s", h, exc)
                 pred = SeasonalNaive().forecast(y, horizons)[h - 1].mean

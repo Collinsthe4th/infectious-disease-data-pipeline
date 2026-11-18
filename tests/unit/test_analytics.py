@@ -115,3 +115,14 @@ def test_summarise_includes_dm_against_references():
     s = summarise(pd.DataFrame(rows), scale=2.0)
     rf = s[(s.model_name == "random_forest") & (s.dm_reference_model == "seasonal_naive")].iloc[0]
     assert rf["mae"] < 3 and rf["dm_statistic"] < 0
+
+
+def test_negative_binomial_really_runs():
+    """Regression: it used to fall back to the seasonal naive on every origin."""
+    pytest.importorskip("statsmodels")
+    from src.analytics.forecasting import NegativeBinomialGLM
+
+    y = _seasonal_series(160)
+    nb = [p.mean for p in NegativeBinomialGLM().forecast(y, 4)]
+    naive = [p.mean for p in SeasonalNaive().forecast(y, 4)]
+    assert nb != naive

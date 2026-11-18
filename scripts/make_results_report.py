@@ -143,9 +143,9 @@ def main() -> None:
 
     if not fc.empty:
         fc["target"] = pd.to_datetime(fc["target"])
-        lassa = nat[nat["disease_code"] == "LASSA"].tail(40)
         live = fc[(~fc["is_backtest"]) & (fc["model_name"] == best)].sort_values("target")
         bt = fc[fc["is_backtest"] & (fc["horizon"] == 1)]
+        lassa = nat[(nat["disease_code"] == "LASSA") & (nat["week_start"] >= bt["target"].min())]
         fig, ax = plt.subplots(figsize=(11, 4.2))
         ax.bar(lassa["week_start"], lassa["confirmed"], width=6, color="#9db7d5", label="observed")
         for name, g in bt.groupby("model_name"):
