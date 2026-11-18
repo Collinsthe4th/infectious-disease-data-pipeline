@@ -188,6 +188,54 @@ def _dump_pdf(path: Path, meta: dict) -> None:
     print("======== END DUMP")
 
 
+def cmd_start_run(args, settings) -> int:
+    """Open a run and print its id as the LAST line (Airflow passes it to the next tasks)."""
+    from src.orchestration.pipeline import begin_run
+
+    ctx = begin_run(settings, args.type, trigger_source=args.trigger, dag_id=args.dag_id)
+    print(ctx.run_id)
+    return 0
+
+
+STEPS = ("collect", "inbox", "process", "quality", "analyse", "export")
+
+
+def cmd_step(args, settings) -> int:
+    """Run ONE pipeline step inside an existing run (one Airflow box)."""
+    import uuid
+
+    from src.orchestration import pipeline as p
+
+    ctx = p.context_for(settings, uuid.UUID(args.run_id))
+    actions = {
+        "collect": lambda: p.ingest_ncdc(ctx, args.diseases, max_files=args.max_files),
+        "inbox": lambda: p.ingest_inbox(ctx),
+        "process": lambda: p.process_documents(ctx, include_failed=args.retry_failed),
+        "quality": lambda: p.post_load(ctx),
+        "analyse": lambda: p.analytics(ctx, forecast=not args.no_forecast),
+        "export": lambda: p.export_parquet(ctx),
+    }
+    try:
+        actions[args.name]()
+        ctx.flush()
+    except Exception as exc:
+        log.exception("step %s failed", args.name)
+        p.note_run(ctx, f"step failed: {args.name}: {type(exc).__name__}: {exc}")
+        return 1
+    print(f"step {args.name}: done")
+    return 0
+
+
+def cmd_finish_run(args, settings) -> int:
+    import uuid
+
+    from src.orchestration.pipeline import context_for, finish_from_log
+
+    status = finish_from_log(context_for(settings, uuid.UUID(args.run_id)))
+    print(f"run {args.run_id}: {status}")
+    return 0 if status != "failed" else 1
+
+
 def cmd_refresh_population(args, settings) -> int:
     from src.ingestion.hdx import refresh_population
     from src.ingestion.http import PoliteSession
@@ -263,6 +311,24 @@ def build_parser() -> argparse.ArgumentParser:
     c.add_argument("--out-dir", default="data/raw/parse_check")
     c.add_argument("--json-out")
     c.set_defaults(func=cmd_parse_check)
+
+    sr = sub.add_parser("start-run", help="open a run and print its id (for Airflow)")
+    sr.add_argument("--type", default="scheduled", choices=["scheduled", "daily_check", "backfill", "manual"])
+    sr.add_argument("--dag-id")
+    sr.set_defaults(func=cmd_start_run)
+
+    st = sub.add_parser("step", help="run one step of an existing run (for Airflow)")
+    st.add_argument("name", choices=STEPS)
+    st.add_argument("--run-id", required=True)
+    st.add_argument("--diseases", type=_diseases)
+    st.add_argument("--max-files", type=int)
+    st.add_argument("--retry-failed", action="store_true")
+    st.add_argument("--no-forecast", action="store_true")
+    st.set_defaults(func=cmd_step)
+
+    fr = sub.add_parser("finish-run", help="close a run started with start-run")
+    fr.add_argument("--run-id", required=True)
+    fr.set_defaults(func=cmd_finish_run)
 
     sub.add_parser("refresh-population").set_defaults(func=cmd_refresh_population)
     sub.add_parser("status").set_defaults(func=cmd_status)

@@ -29,8 +29,8 @@ Every week the pipeline does five jobs, in order. That chain of jobs is what an 
 | 4. Save | `src/storage/schema.sql` | change the database tables |
 | 5. Analyse | `src/analytics/forecasting.py`, `anomaly.py` | change the forecast models or alert methods |
 | 5. Show | `dashboard/app.py`, `dashboard/pages/*.py` | change what the dashboard displays |
-| The chain itself | `src/orchestration/pipeline.py` | change the order of the steps |
-| Airflow version of the chain | `src/orchestration/dags/disease_pipeline_dag.py` | |
+| The chain itself | `src/orchestration/pipeline.py` | change what a step does |
+| The Airflow boxes and schedule | `astro/dags/ncdc_disease_pipeline.py` | change the schedule or the order of the boxes |
 
 Everything else (tests, Docker files, docs) supports these files; you can ignore it.
 
@@ -48,3 +48,6 @@ Everything else (tests, Docker files, docs) supports these files; you can ignore
    Main file path: `dashboard/app.py`. Save; the app restarts and shows the data.
 
 Never paste the password into a file in the repository, an issue or a chat.
+
+## Airflow (Astronomer)
+

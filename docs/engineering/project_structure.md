@@ -16,8 +16,10 @@ infectious-disease-data-pipeline/
 │   ├── validation/ L4 rules.py (Table 3.4) · engine.py
 │   ├── storage/    L5 schema.sql · models.py · repository.py · db.py · migrations/
 │   ├── analytics/  L6 series.py · decomposition.py · anomaly.py · forecasting.py · evaluation.py · run.py
-│   ├── orchestration/ pipeline.py (steps) · cli.py · dags/disease_pipeline_dag.py
+│   ├── orchestration/ pipeline.py (steps) · cli.py
 │   └── demo/          synthetic.py · pdf_writer.py
+├── astro/             Airflow project for Astronomer: dags/ncdc_disease_pipeline.py · Dockerfile
+├── results/           results page + charts, rebuilt by GitHub from the demo
 ├── dashboard/      L7 app.py · data.py · ui.py · pages/1_Trends … 5_Pipeline_Health
 ├── tests/unit/        no database
 ├── tests/integration/ PostgreSQL: schema, end-to-end demo, idempotency, dashboard pages

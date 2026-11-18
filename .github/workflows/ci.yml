@@ -44,6 +44,38 @@ jobs:
           psql "postgresql://test:test@localhost:5432/test_pipeline" -v ON_ERROR_STOP=1 -q -f src/storage/schema.sql
           psql "postgresql://test:test@localhost:5432/test_pipeline" -v ON_ERROR_STOP=1 -f tests/integration/sql/schema_smoke_test.sql
 
+  airflow-dag:
+    name: Airflow DAGs load in Airflow 3.3.2
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install Airflow (same version as the Astro Runtime in astro/Dockerfile)
+        run: |
+          pip install "apache-airflow==3.3.2" apache-airflow-providers-standard \
+            --constraint "https://raw.githubusercontent.com/apache/airflow/constraints-3.3.2/constraints-3.12.txt"
+      - name: Load the DAG files
+        env:
+          AIRFLOW_HOME: /tmp/airflow
+        run: |
+          python - <<'PY'
+          try:
+              from airflow.dag_processing.dagbag import DagBag
+          except ImportError:
+              from airflow.models.dagbag import DagBag
+          bag = DagBag("astro/dags", include_examples=False)
+          assert not bag.import_errors, bag.import_errors
+          print(sorted(bag.dag_ids))
+          main = bag.get_dag("ncdc_disease_pipeline")
+          order = [t.task_id for t in main.topological_sort()] if hasattr(main, "topological_sort") else sorted(main.task_ids)
+          print(order)
+          assert set(bag.dag_ids) == {"ncdc_disease_pipeline", "load_demo_data", "ncdc_backfill_2021_2026"}
+          assert len(main.task_ids) == 6
+          PY
+
   lint:
     runs-on: ubuntu-latest
     continue-on-error: true

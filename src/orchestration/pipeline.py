@@ -91,6 +91,31 @@ def begin_run(settings: Settings, run_type: str, trigger_source: str = "cli", da
     return RunContext(engine=engine, settings=settings, run_id=run_id, stats=repo.RunStats())
 
 
+def note_run(ctx: RunContext, message: str) -> None:
+    """Append a note to the run's error_message (used when steps run as separate processes)."""
+    with ctx.engine.begin() as conn:
+        conn.execute(text("""UPDATE ops.pipeline_run_log
+                                SET error_message = concat_ws(' | ', error_message, CAST(:m AS text))
+                              WHERE run_id = :r"""), {"m": message, "r": ctx.run_id})
+
+
+def context_for(settings: Settings, run_id: uuid.UUID) -> RunContext:
+    """Rebuild the context of an existing run (each Airflow task is a new process)."""
+    set_context(run_id=str(run_id))
+    return RunContext(engine=get_engine(settings.database_url), settings=settings, run_id=run_id,
+                      stats=repo.RunStats())
+
+
+def finish_from_log(ctx: RunContext) -> str:
+    """Close a run whose steps ran separately: failed / partial / success from the notes they left."""
+    with ctx.engine.connect() as conn:
+        notes = conn.execute(text("SELECT error_message FROM ops.pipeline_run_log WHERE run_id = :r"),
+                             {"r": ctx.run_id}).scalar_one() or ""
+    status = "failed" if "step failed" in notes else ("partial" if "failed to load" in notes else "success")
+    repo.finish_run(ctx.engine, ctx.run_id, status, error_message=notes or None)
+    return status
+
+
 def end_run(ctx: RunContext, error: str | None = None) -> str:
     ctx.flush()
     status = "failed" if error else ("partial" if ctx.failures else "success")
@@ -205,6 +230,11 @@ def process_documents(ctx: RunContext, *, include_failed: bool = False) -> None:
     for doc in docs:
         path = s.data_dir / doc["file_path"]
         set_context(report=doc["file_name"])
+        if not path.exists() and not _fetch_missing_file(doc, path, s):
+            with ctx.engine.begin() as conn:
+                repo.set_document_status(conn, doc["document_id"], "parse_failed", "raw file not available on this machine")
+            ctx.failures += 1
+            continue
         try:
             reports = extract_document(doc, path, alias_map)
         except ExtractionError as exc:
@@ -245,6 +275,35 @@ def process_documents(ctx: RunContext, *, include_failed: bool = False) -> None:
         ctx.flush()
     clear_report()
     ctx.flush()
+    if ctx.failures:
+        note_run(ctx, f"{ctx.failures} report(s) failed to load")
+
+
+def _fetch_missing_file(doc: dict, path: Path, settings: Settings) -> bool:
+    """Download a raw file again when this machine does not have it.
+
+    On Airflow/Astro each task may run on a different worker with its own disk,
+    so the file saved by the 'collect' task may not be here. The hash in
+    raw.documents proves the new copy is the same file.
+    """
+    if not doc.get("source_url"):
+        return False
+    from src.ingestion.hashing import sha256_bytes
+
+    session = PoliteSession(user_agent=settings.user_agent, delay_s=settings.request_delay_s,
+                            timeout_s=settings.request_timeout_s, max_retries=settings.max_retries,
+                            backoff_base_s=settings.backoff_base_s)
+    try:
+        content = session.get(doc["source_url"]).content
+    except DownloadError as exc:
+        log.warning("could not re-fetch %s: %s", doc["source_url"], exc)
+        return False
+    if sha256_bytes(content) != doc["sha256"]:
+        log.warning("re-fetched file differs from the stored hash: %s", doc["source_url"])
+        return False
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(content)
+    return True
 
 
 def _load_report(ctx: RunContext, doc: dict, report: ReportExtraction, alias_map, denominators) -> None:

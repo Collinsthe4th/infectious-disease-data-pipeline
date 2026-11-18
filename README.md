@@ -117,8 +117,10 @@ One fact row = one **disease × location × epidemiological week**. The database
 │   ├── validation/      the 12 rules of Table 3.4 and the engine that routes errors and warnings
 │   ├── storage/         schema.sql (source of truth), SQLAlchemy models, repository, db helpers
 │   ├── analytics/       STL, forecasting, evaluation, anomaly detection, analytics job
-│   ├── orchestration/   pipeline steps, CLI, Airflow DAG
+│   ├── orchestration/   pipeline steps and the command-line tool
 │   └── demo/            synthetic data and NCDC-style PDF generator
+├── astro/               Airflow project deployed to Astronomer (dags/ncdc_disease_pipeline.py)
+├── results/             results page and charts, rebuilt automatically from the demo
 ├── dashboard/           Streamlit app (app.py + pages/)
 ├── tests/               unit/ (no database) and integration/ (PostgreSQL, end-to-end, dashboard)
 ├── data/                raw/, inbox/, quarantine/, curated/parquet/, reference/ (states + aliases)

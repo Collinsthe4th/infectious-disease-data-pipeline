@@ -1,0 +1,23 @@
+# The pipeline's own libraries (installed into /opt/pipeline_venv by the Dockerfile).
+# --- ingestion -------------------------------------------------------------
+requests>=2.31,<3
+beautifulsoup4>=4.12,<5
+# --- PDF parsing -----------------------------------------------------------
+pdfplumber>=0.11,<0.12
+camelot-py>=1.0,<2          # stream-mode fallback for tables without ruling lines
+# --- data ------------------------------------------------------------------
+pandas>=2.2,<4
+numpy>=1.26,<3
+scipy>=1.11,<2
+pyarrow>=15
+duckdb>=1.0,<2
+# --- storage ---------------------------------------------------------------
+SQLAlchemy>=2.0.30,<2.1
+psycopg[binary]>=3.1,<4
+# --- analytics -------------------------------------------------------------
+statsmodels>=0.14,<0.15
+scikit-learn>=1.4,<2
+xgboost>=2.0,<4
+# --- presentation ----------------------------------------------------------
+# --- demo data (synthetic PDFs) --------------------------------------------
+reportlab>=4.0,<6
