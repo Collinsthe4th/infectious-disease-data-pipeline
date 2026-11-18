@@ -24,8 +24,14 @@ BEGIN
     INSERT INTO ops.pipeline_run_log (run_type, trigger_source) VALUES ('scheduled', 'cron') RETURNING run_id INTO v_run2;
     SELECT location_id INTO v_ng FROM curated.dim_location WHERE pcode = 'NG';
     INSERT INTO curated.dim_location (admin_level, pcode, parent_location_id, state_name, geo_zone, population, population_year)
-    VALUES (1, 'NG012', v_ng, 'Edo', 'South South', 4777000, 2022) RETURNING location_id INTO v_edo;
-    INSERT INTO curated.dim_location_alias VALUES ('edo', v_edo, 'test'), ('edo state', v_edo, 'test');
+    VALUES (1, 'NG012', v_ng, 'Edo', 'South South', 4777000, 2022)
+    ON CONFLICT (pcode) DO UPDATE SET population = EXCLUDED.population, population_year = EXCLUDED.population_year
+    RETURNING location_id INTO v_edo;
+    INSERT INTO curated.dim_location_alias VALUES ('edo', v_edo, 'test'), ('edo state', v_edo, 'test')
+    ON CONFLICT (alias_normalised) DO NOTHING;
+    -- the test uses week 2024-W05: clear anything a previous load put there (rolled back at the end)
+    DELETE FROM curated.fact_weekly_cases WHERE week_id IN (202405, 202406);
+    DELETE FROM analytics.alert WHERE week_id = 202405;
     SELECT disease_id INTO v_lassa FROM curated.dim_disease WHERE disease_code = 'LASSA';
 
     INSERT INTO raw.documents (sha256, source_name, source_url, file_path, file_name, run_id)

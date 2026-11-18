@@ -4,8 +4,6 @@ Only the first lines of each report are used: enough to fix the layout,
 never whole documents.
 """
 
-from datetime import date
-
 import pytest
 
 from src.extraction.classify import classify
@@ -128,10 +126,30 @@ def test_mpox_year_week_rows_ignore_previous_year():
 
 def test_cholera_unlabelled_tables_use_their_captions():
     block = read_summary(content(CHOLERA_2025_W9, CHOLERA_TABLES), 2025, epi_week=9)
-    assert block.method == "summary_table"
+    assert block.method.startswith("summary_table")
     row = block.rows[0]
     assert (row["suspected"], row["deaths"], row["cfr_reported"]) == (2, 0, 0.0)
+    assert (row["cum_suspected"], row["cum_deaths"]) == (1149, 28)  # second table, read via its caption
     assert "confirmed" not in row  # "States Reporting Cases" must not be read as a case count
+
+
+def test_cholera_caption_tables_from_text_only():
+    """When pdfplumber finds no usable table, the captioned text lines are enough."""
+    block = read_summary(content(CHOLERA_2025_W9), 2025, epi_week=9)
+    row = block.rows[0]
+    assert (row["suspected"], row["deaths"], row["cum_suspected"], row["cum_deaths"]) == (2, 0, 1149, 28)
+
+
+def test_totals_without_a_this_week_heading_are_not_weekly():
+    text = ("TITLE: 2018/2019 CEREBROSPINAL MENINGITIS OUTBREAK IN NIGERIA\nEPI-WEEK: 13\nDATE: March 27, 2019\n"
+            "HIGHLIGHTS\nBeginning from 1st October, 2018 to 27th March, 2019, a total of 541 suspected cases have been reported")
+    assert read_summary(content(text), 2019, epi_week=13) is None
+
+
+def test_monthly_measles_infographic_is_detected():
+    c = classify("MEASLES SITUATION REPORT\nSerial Number 07\nData as at July 31st 2024\nHIGHLIGHTS\n"
+                 "SITUATION UPDATES\n‒ In July, 2024:\n# Jan - July (# New in July)")
+    assert c.period == "monthly" and (c.epi_year, c.epi_week) == (2024, 31)
 
 
 def test_csm_season_totals_are_not_stored_as_calendar_totals():

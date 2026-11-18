@@ -58,7 +58,9 @@ TEMPLATES: tuple[LayoutTemplate, ...] = (
         report_type="situation_report",
         diseases=tuple(code for code in DISEASES if code != "LASSA"),
         valid_from=date(2020, 1, 1),
-        notes="Header-word mapping shared by the other six situation reports. "
+        read_state_table=False,
+        notes="National figures only until each disease's state table is verified. "
+        "Header-word mapping shared by the other six situation reports. "
         "Confirm against each disease's PDFs (run the 'NCDC parse check' workflow).",
     ),
     LayoutTemplate(
@@ -66,8 +68,8 @@ TEMPLATES: tuple[LayoutTemplate, ...] = (
         report_type="situation_report",
         diseases=(),
         read_summary=True,
-        read_state_table=True,
-        notes="Last resort for unexpected layouts (any disease).",
+        read_state_table=False,
+        notes="Last resort for unexpected layouts (any disease); national figures only.",
     ),
     LayoutTemplate(
         template_id="ncdc_wer_v1",

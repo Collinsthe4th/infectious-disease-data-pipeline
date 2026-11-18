@@ -62,7 +62,8 @@ EPI_WEEK_YEAR_RE = re.compile(r"(?:epi[\s\-]*)?week\s*[:\-]?\s*(\d{1,2})\s*[,/ ]
 WER_RE = re.compile(r"weekly\s*epidemiological\s*report", re.I)
 SITREP_RE = re.compile(r"situation\s*report|sitrep|an\s*update\s*of|update\s*on", re.I)
 MONTHLY_RE = re.compile(r"monthly\s*sitrep|reporting\s*month|situation\s*report\s*" + _MONTH + r"\s*20\d\d|"
-                        r"summary\s*of\s*the\s*current\s*month", re.I)
+                        r"summary\s*of\s*the\s*current\s*month|new\s*in\s*" + _MONTH + r"|"
+                        r"\bin\s+" + _MONTH + r",?\s*20\d\d\s*:", re.I)
 
 TITLE_AREA = 450  # characters treated as the title block
 

@@ -83,6 +83,8 @@ def _is_numeric_row(row: list[str]) -> bool:
 
 
 def _summary_from_tables(content: PdfContent, epi_year: int, dash_is_zero: bool, monthly: bool = False) -> ParsedBlock | None:
+    """Summary tables; weekly and cumulative rows may sit in separate tables (cholera)."""
+    merged = ParsedBlock(method="summary_table")
     for page, table in content.tables:
         header_idx = next(
             (i for i in range(min(3, len(table)))
@@ -116,9 +118,25 @@ def _summary_from_tables(content: PdfContent, epi_year: int, dash_is_zero: bool,
         if weekly is None and cumulative is None:
             continue
         values, errors = _read_summary_rows(fields, weekly, cumulative, dash_is_zero)
-        if any(k in values for k in (*COUNT_FIELDS, *CUM_FIELD.values())):
-            return ParsedBlock(rows=[values], errors=errors + notes, page=page, method="summary_table")
-    return None
+        if _has_values(values):
+            _merge_into(merged, values, errors + notes, page)
+    return merged if merged.rows else None
+
+
+def _has_values(values: dict) -> bool:
+    return any(values.get(k) not in (None, "") for k in (*COUNT_FIELDS, *CUM_FIELD.values()))
+
+
+def _merge_into(block: ParsedBlock, values: dict, errors: list[str], page: int | None) -> None:
+    """Add values to the block without overwriting what an earlier reader found."""
+    if not block.rows:
+        block.rows.append({})
+        block.page = page
+    target = block.rows[0]
+    for key, value in values.items():
+        if value not in (None, "") and target.get(key) in (None, ""):
+            target[key] = value
+    block.errors.extend(errors)
 
 
 def _period_from_context(page_text: str, row: list[str], epi_year: int) -> str | None:
@@ -218,6 +236,45 @@ def _summary_from_year_week_rows(content: PdfContent, epi_year: int, epi_week: i
     return None
 
 
+CAPTION_RE = re.compile(r"^\s*table\s*\d+\s*[:.\-–]?\s*(.*)$", re.I)
+
+
+def _summary_from_captions(content: PdfContent, epi_year: int, dash_is_zero: bool, monthly: bool = False) -> ParsedBlock | None:
+    """Text tables introduced by a caption, e.g. 'Table 2: Cumulative suspected cases (Epi week 1 - 9, 2025)'
+    followed by header lines and one line of numbers (cholera 2025)."""
+    block = ParsedBlock(method="captions")
+    for page_no, text in enumerate(content.page_texts[:2], start=1):
+        lines = [ln.strip() for ln in text.splitlines()]
+        for i, line in enumerate(lines):
+            m = CAPTION_RE.match(line)
+            if not m:
+                continue
+            caption = m.group(1).lower().replace(" ", "")
+            if any(w in caption for w in ("state", "lga", "trend", "month", "age", "sex")):
+                continue
+            if "cumulative" in caption:
+                if not cumulative_is_calendar(m.group(1), epi_year):
+                    continue
+                period = "cumulative"
+            elif "current" in caption and not monthly:
+                period = "weekly"
+            else:
+                continue
+            header: list[str] = []
+            for ln in lines[i + 1:i + 7]:
+                tokens = ln.split()
+                if tokens and all(_is_number(t) for t in tokens):
+                    order = _field_order(" ".join(header).lower())
+                    if order and order[0] == "suspected":  # wrapped headers can scramble order; trust only clean ones
+                        values, errors = _read_summary_rows(order, tokens if period == "weekly" else None,
+                                                            tokens if period == "cumulative" else None, dash_is_zero)
+                        if _has_values(values):
+                            _merge_into(block, values, errors, page_no)
+                    break
+                header.append(ln)
+    return block if block.rows else None
+
+
 _WORD_NUMBERS = {"zero": 0, "no": 0, "nil": 0, "one": 1, "two": 2, "three": 3, "four": 4, "five": 5,
                  "six": 6, "seven": 7, "eight": 8, "nine": 9, "ten": 10}
 _NUM = r"(\d[\d,]*|zero|no|nil|one|two|three|four|five|six|seven|eight|nine|ten)"
@@ -248,7 +305,8 @@ def _highlight_values(text: str) -> dict:
     return out
 
 
-def _summary_from_highlights(content: PdfContent, epi_year: int, monthly: bool = False) -> ParsedBlock | None:
+def _summary_from_highlights(content: PdfContent, epi_year: int, monthly: bool = False,
+                             epi_week: int | None = None) -> ParsedBlock | None:
     """Sentences such as 'Suspected Cases: 42 across 18 states' (Mpox 2024, diphtheria 2025, yellow fever).
 
     The text is split at the first line mentioning 'cumulative': figures
@@ -257,10 +315,14 @@ def _summary_from_highlights(content: PdfContent, epi_year: int, monthly: bool =
     """
     lines = "\n".join(content.page_texts[:2]).splitlines()
     cut = next((i for i, ln in enumerate(lines) if re.search(r"cumulative", ln, re.I)), None)
-    current_text = " ".join(lines[:cut] if cut is not None else lines)
     values: dict = {}
-    if not monthly:
-        values.update(_highlight_values(current_text))
+    if not monthly and epi_week is not None:
+        # current-period figures only under an explicit heading for THIS week (not a range, not the title)
+        anchor_re = re.compile(rf"(?:wee?k|wk)[\s\-:]*0?{epi_week}\b(?!\s*[-–])|this\s+week|reporting\s+week", re.I)
+        anchor = next((i for i, ln in enumerate(lines[:cut]) if i >= 2 and anchor_re.search(ln)
+                       and not re.search(r"(?:wee?k|wk)\s*\d+\s*[-–]", ln, re.I)), None)
+        if anchor is not None:
+            values.update(_highlight_values(" ".join(lines[anchor:cut])))
     if cut is not None and cumulative_is_calendar(" ".join(lines[cut:cut + 2]), epi_year):
         cum = _highlight_values(" ".join(lines[cut:cut + 25]))
         values.update({CUM_FIELD[k]: v for k, v in cum.items()})
@@ -288,14 +350,30 @@ def _numbers_after_label(line: str) -> list[str]:
 
 def read_summary(content: PdfContent, epi_year: int, *, epi_week: int | None = None, dash_is_zero: bool = False,
                  monthly: bool = False, allow_highlights: bool = True) -> ParsedBlock | None:
-    """Try each national-summary reader in turn, most structured first."""
-    block = (_summary_from_tables(content, epi_year, dash_is_zero, monthly)
-             or _summary_from_text(content, epi_year, dash_is_zero, monthly))
-    if block is None and epi_week is not None:
-        block = _summary_from_year_week_rows(content, epi_year, epi_week, dash_is_zero)
-    if block is None and allow_highlights:
-        block = _summary_from_highlights(content, epi_year, monthly)
-    return block
+    """Combine the structured readers (tables, text rows, captions); highlight sentences only as a last resort.
+
+    Earlier readers win; later ones only fill values that are still missing.
+    """
+    merged = ParsedBlock()
+    methods = []
+    readers = [
+        lambda: _summary_from_tables(content, epi_year, dash_is_zero, monthly),
+        lambda: _summary_from_text(content, epi_year, dash_is_zero, monthly),
+        lambda: (_summary_from_year_week_rows(content, epi_year, epi_week, dash_is_zero)
+                 if epi_week is not None and not monthly else None),
+        lambda: _summary_from_captions(content, epi_year, dash_is_zero, monthly),
+    ]
+    for reader in readers:
+        block = reader()
+        if block and block.rows:
+            _merge_into(merged, block.rows[0], block.errors, block.page)
+            methods.append(block.method)
+    if not merged.rows and allow_highlights:
+        return _summary_from_highlights(content, epi_year, monthly, epi_week)
+    if not merged.rows:
+        return None
+    merged.method = "+".join(methods)
+    return merged
 
 
 # --------------------------------------------------------------------------- #
