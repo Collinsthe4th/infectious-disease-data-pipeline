@@ -14,11 +14,14 @@ on:
       diseases:
         description: "Comma-separated codes (blank = all seven)"
         default: ""
+      extra:
+        description: "Extra flags, e.g. --spread --dump"
+        default: "--spread"
   schedule:
     - cron: "30 6 * * 1"   # Mondays 07:30 West Africa Time
   push:
     branches: [main]
-    paths: ["src/extraction/**", "src/ingestion/**", ".github/workflows/ncdc-parse-check.yml"]
+    paths: ["src/extraction/**", "src/ingestion/**", "src/orchestration/cli.py", ".github/workflows/ncdc-parse-check.yml"]
 
 jobs:
   parse-check:
@@ -35,7 +38,7 @@ jobs:
       - run: pip install requests beautifulsoup4 pdfplumber camelot-py pandas numpy scipy reportlab
       - name: Download and parse the newest NCDC reports
         run: |
-          ARGS="--download ${{ github.event.inputs.per_disease || '2' }}"
+          ARGS="--download ${{ github.event.inputs.per_disease || '3' }} ${{ github.event.inputs.extra || '--spread --dump' }}"
           if [ -n "${{ github.event.inputs.diseases }}" ]; then ARGS="$ARGS --diseases ${{ github.event.inputs.diseases }}"; fi
           python -m src.orchestration.cli --plain-logs parse-check $ARGS --json-out parse_report.json | tee parse_log.txt
       - name: Summary

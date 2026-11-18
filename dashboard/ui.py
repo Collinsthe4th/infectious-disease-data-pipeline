@@ -9,6 +9,12 @@ import data
 COLOURS = {"observed": "#1f4e79", "trend": "#c0392b", "forecast": "#e67e22", "alert": "#c0392b", "band": "rgba(230,126,34,0.18)"}
 
 
+def rounded(df, decimals: int = 2):
+    """Round numeric columns only (dates and text are left untouched)."""
+    num = df.select_dtypes("number").columns
+    return df.assign(**{c: df[c].round(decimals) for c in num})
+
+
 def page(title: str, icon: str = "🦠") -> None:
     st.set_page_config(page_title=f"{title} · NG Disease Surveillance", page_icon=icon, layout="wide")
     st.title(title)

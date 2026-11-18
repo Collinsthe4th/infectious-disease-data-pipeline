@@ -69,7 +69,7 @@ if not evaln.empty:
     st.dataframe(acc.sort_values(acc.columns[0]), use_container_width=True)
     ref = st.radio("DM reference model", sorted(e["dm_reference_model"].dropna().unique()), horizontal=True)
     dm = e[e["dm_reference_model"] == ref][["model_name", "horizon", "mae", "rmse", "mase", "dm_statistic", "dm_p_value"]]
-    st.dataframe(dm.round(3), use_container_width=True, hide_index=True)
+    st.dataframe(ui.rounded(dm, 3), use_container_width=True, hide_index=True)
 
 if not backtest.empty:
     with st.expander("Backtest forecasts vs actual"):

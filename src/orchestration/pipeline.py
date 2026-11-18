@@ -18,7 +18,8 @@ import logging
 import subprocess
 import uuid
 from dataclasses import dataclass
-from datetime import date, datetime, timezone
+from datetime import datetime, timezone
+from decimal import Decimal
 from pathlib import Path
 from typing import Iterable
 
@@ -355,7 +356,15 @@ def export_parquet(ctx: RunContext) -> Path | None:
             "alerts": "SELECT * FROM analytics.alert",
             "forecasts": "SELECT * FROM analytics.forecast WHERE is_backtest = false",
         }.items():
-            pd.read_sql(text(sql), conn).to_parquet(out / f"{name}.parquet", index=False)
+            frame = pd.read_sql(text(sql), conn)
+            for col in frame.columns:  # UUID, Decimal and list objects -> Arrow-friendly types
+                if frame[col].dtype == object:
+                    sample = frame[col].dropna().head(1).tolist()
+                    if sample and isinstance(sample[0], uuid.UUID):
+                        frame[col] = frame[col].astype("string")
+                    elif sample and isinstance(sample[0], Decimal):
+                        frame[col] = pd.to_numeric(frame[col], errors="coerce")
+            frame.to_parquet(out / f"{name}.parquet", index=False)
     log.info("exported Parquet files to %s", out)
     return out
 

@@ -126,7 +126,12 @@ def cmd_parse_check(args, settings) -> int:
                                 timeout_s=settings.request_timeout_s, max_retries=1, backoff_base_s=5)
         crawler = NcdcCrawler(session, settings.ncdc_base_url, out_dir)
         for code in args.diseases or list(DISEASES):
-            entries = list(crawler.discover([code]))[: args.download]
+            listing = list(crawler.discover([code]))
+            if args.spread and len(listing) > args.download:
+                step = (len(listing) - 1) / max(args.download - 1, 1)
+                entries = [listing[round(i * step)] for i in range(args.download)]
+            else:
+                entries = listing[: args.download]
             for entry in entries:
                 try:
                     f = crawler.download(entry, lambda h: False)
@@ -140,6 +145,8 @@ def cmd_parse_check(args, settings) -> int:
         from src.ingestion.hashing import sha256_file
 
         doc = {"sha256": sha256_file(path), **meta}
+        if args.dump:
+            _dump_pdf(path, meta)
         try:
             ex = extract_pdf(doc, path, alias)
             rows = ex.rows.drop(columns=["epi_year", "epi_week"], errors="ignore")
@@ -158,6 +165,27 @@ def cmd_parse_check(args, settings) -> int:
     if args.json_out:
         Path(args.json_out).write_text(json.dumps(report, indent=2, default=str), encoding="utf-8")
     return 0
+
+
+def _dump_pdf(path: Path, meta: dict) -> None:
+    """Print the text layer and table layout of a PDF (for writing templates)."""
+    from src.extraction.pdf_reader import camelot_tables, read_pdf
+
+    print(f"\n======== DUMP {path.name} {meta.get('url', '')}\n{meta.get('listing_title', '')}")
+    try:
+        content = read_pdf(path, max_pages=6)
+    except Exception as exc:
+        print(f"cannot read: {exc}")
+        return
+    for i, text in enumerate(content.page_texts[:4], start=1):
+        print(f"--- page {i} text ---\n{text[:1800]}")
+    tables = content.tables or camelot_tables(path, pages="1-4")
+    engine = "pdfplumber" if content.tables else "camelot"
+    for page, rows in tables[:6]:
+        print(f"--- {engine} table on page {page}: {len(rows)} rows ---")
+        for row in rows[:8]:
+            print(" | ".join(c[:28] for c in row))
+    print("======== END DUMP")
 
 
 def cmd_refresh_population(args, settings) -> int:
@@ -230,6 +258,8 @@ def build_parser() -> argparse.ArgumentParser:
     c.add_argument("paths", nargs="*", help="local PDF files")
     c.add_argument("--download", type=int, default=0, help="download the newest N reports per disease first")
     c.add_argument("--diseases", type=_diseases)
+    c.add_argument("--spread", action="store_true", help="sample reports evenly across the whole listing (all years)")
+    c.add_argument("--dump", action="store_true", help="print each PDF's text and tables (for writing templates)")
     c.add_argument("--out-dir", default="data/raw/parse_check")
     c.add_argument("--json-out")
     c.set_defaults(func=cmd_parse_check)

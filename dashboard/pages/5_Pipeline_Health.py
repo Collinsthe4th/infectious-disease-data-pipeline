@@ -47,6 +47,6 @@ rev = data.revisions()
 if rev.empty:
     st.info("No revisions detected yet.")
 else:
-    st.dataframe(rev.round(3), use_container_width=True, hide_index=True)
+    st.dataframe(ui.rounded(rev, 3), use_container_width=True, hide_index=True)
     st.plotly_chart(px.histogram(rev, x="revision_lag_weeks", nbins=20, title="Weeks between first publication and revision"),
                     use_container_width=True)

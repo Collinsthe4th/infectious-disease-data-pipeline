@@ -23,9 +23,9 @@ def scalar(engine, sql, **params):
 
 
 def test_run_succeeds_and_is_logged(engine, demo_run):
-    assert demo_run["status"] == "success"
     with engine.connect() as conn:
         run = conn.execute(text("SELECT * FROM ops.pipeline_run_log WHERE run_id = :r"), {"r": demo_run["run_id"]}).mappings().one()
+    assert demo_run["status"] == "success", run["error_message"]
     assert run["files_new"] == len(demo_run["files"])
     assert run["rows_passed"] > 1000 and run["rows_quarantined"] == 5
     assert run["revisions_detected"] > 0 and run["ended_at"] is not None

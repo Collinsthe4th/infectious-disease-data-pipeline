@@ -57,5 +57,5 @@ if active.empty:
     st.success("No alert thresholds crossed in the last four weeks.")
 else:
     st.dataframe(active[["week_start", "disease_name", "location_name", "method", "observed", "expected", "statistic"]]
-                 .rename(columns={"week_start": "week"}).round(2), use_container_width=True, hide_index=True)
+                 .rename(columns={"week_start": "week"}).pipe(ui.rounded), use_container_width=True, hide_index=True)
 st.caption("Use the pages in the sidebar for trends, states, forecasts, alerts and pipeline health.")

@@ -37,7 +37,7 @@ with left:
     st.plotly_chart(fig, use_container_width=True)
 with right:
     st.subheader("Table")
-    st.dataframe(totals.rename(columns={"location_name": "state", "per_100k": "per 100,000"}).round(2),
+    st.dataframe(totals.rename(columns={"location_name": "state", "per_100k": "per 100,000"}).pipe(ui.rounded),
                  use_container_width=True, hide_index=True)
     if totals["per_100k"].isna().all():
         st.caption("Incidence per 100,000 needs state populations: run `pipeline refresh-population` then `pipeline init-db`.")

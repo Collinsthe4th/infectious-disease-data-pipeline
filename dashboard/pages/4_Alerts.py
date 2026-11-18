@@ -20,7 +20,7 @@ else:
     summary = active.groupby(["disease_name", "location_name"]).agg(
         alerts=("method", "count"), methods=("method", lambda s: ", ".join(sorted(set(s)))),
         latest=("week_start", "max"), max_statistic=("statistic", "max")).reset_index()
-    st.dataframe(summary.sort_values(["latest", "max_statistic"], ascending=False).round(2),
+    st.dataframe(summary.sort_values(["latest", "max_statistic"], ascending=False).pipe(ui.rounded),
                  use_container_width=True, hide_index=True)
 
 st.subheader("Signal for one series")
