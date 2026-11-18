@@ -163,7 +163,7 @@ def rule_06_cumulative_not_decreasing(df: pd.DataFrame, previous: PreviousLookup
 # --- Rule 7 -------------------------------------------------------------------
 def rule_07_states_sum_to_national(df: pd.DataFrame, national_pcode: str = "NG") -> list[Issue]:
     issues = []
-    for (disease, year, week), group in df.groupby(["disease_code", "epi_year", "epi_week"]):
+    for _key, group in df.groupby(["disease_code", "epi_year", "epi_week"]):
         national = group[group["pcode"] == national_pcode]
         states = group[group["pcode"] != national_pcode]
         if national.empty or len(states) < 2:

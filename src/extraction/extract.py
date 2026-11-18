@@ -130,13 +130,17 @@ def _apply_template(
 
     national: dict | None = None
     if template.read_summary:
-        summary = read_summary(content, cls.epi_year, dash_is_zero=template.dash_is_zero)
+        monthly = cls.period == "monthly"
+        summary = read_summary(content, cls.epi_year, epi_week=cls.epi_week, dash_is_zero=template.dash_is_zero,
+                               monthly=monthly, allow_highlights=template.allow_highlights)
         if summary and summary.rows:
             national = {"location_raw": "National", **summary.rows[0]}
+            if monthly:  # a monthly report's period figures are not weekly values
+                national = {k: v for k, v in national.items() if k not in ("suspected", "confirmed", "deaths", "cfr_reported")}
             errors += summary.errors
             page = summary.page
 
-    if template.read_state_table:
+    if template.read_state_table and cls.period == "weekly":
         block = read_state_tables(content.tables, alias_map, default_period=template.state_default_period,
                                   dash_is_zero=template.dash_is_zero)
         if block is None:

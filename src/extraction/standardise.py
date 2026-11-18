@@ -8,12 +8,14 @@ from typing import Iterable, Mapping, Optional
 # Canonical variable names (Table 3.3) and the header words that map to them.
 # Checked in order; the first match wins, so more specific patterns go first.
 _HEADER_RULES: tuple[tuple[str, tuple[str, ...]], ...] = (
-    ("affected", (r"affected", r"\bhcws?\b", r"health\s*care\s*workers?")),  # ignored columns
     ("cfr", (r"\bcfr\b", r"fatality")),
+    # ignored columns: counts of places or people other than cases, percentages
+    ("affected", (r"affected", r"\bhcws?\b", r"health\s*care\s*workers?", r"reporting\s*cases", r"\blgas?\b",
+                  r"%", r"sample", r"discarded", r"pending", r"admission", r"contacts?")),
     ("deaths", (r"death",)),
     ("probable", (r"probable",)),
     ("confirmed", (r"confirm",)),
-    ("suspected", (r"suspect", r"\bcases?\b(?!.*confirm)")),
+    ("suspected", (r"suspect", r"^#?\s*(total\s*)?(number\s*of\s*)?cases?$", r"total\s*(number\s*of\s*)?cases")),
     ("location", (r"\bstates?\b", r"\blocation\b", r"\bjurisdiction\b")),
     ("lga", (r"\blgas?\b",)),
     ("period", (r"reporting\s*period", r"\bperiod\b")),

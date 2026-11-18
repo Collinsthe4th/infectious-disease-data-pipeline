@@ -104,8 +104,8 @@ def cmd_parse_check(args, settings) -> int:
     """
     import csv
 
-    from src.extraction.extract import ExtractionError, extract_pdf
     from src.common.text import normalise_alias
+    from src.extraction.extract import ExtractionError, extract_pdf
 
     alias = {"ng": "NG"}
     states = list(csv.DictReader((settings.reference_dir / "nga_states.csv").open(encoding="utf-8")))

@@ -3,11 +3,11 @@ from datetime import date
 import pytest
 import requests
 
+from src.common.diseases import DISEASES
 from src.ingestion.hashing import sha256_bytes, sha256_file
 from src.ingestion.http import DownloadError, PoliteSession
 from src.ingestion.inbox import move_to_raw, scan_inbox
 from src.ingestion.ncdc_crawler import NcdcCrawler, listing_url, parse_listing
-from src.common.diseases import DISEASES
 
 LISTING_HTML = """
 <html><body><h2>An update of Lassa fever outbreak in Nigeria</h2>

@@ -25,7 +25,8 @@ class LayoutTemplate:
     read_summary: bool = True  # "Current week" / "<year> Cumulative" rows
     read_state_table: bool = True
     read_disease_rows: bool = False  # WER: one row per disease
-    state_default_period: str = "weekly"  # used when a state column header has no period word
+    state_default_period: str | None = None  # period for state columns whose header has no period word
+    allow_highlights: bool = True  # last resort: read figures from highlight sentences
     dash_is_zero: bool = False
     verified: bool = False  # True once checked against real NCDC PDFs
     notes: str = ""
@@ -48,7 +49,6 @@ TEMPLATES: tuple[LayoutTemplate, ...] = (
         report_type="situation_report",
         diseases=("LASSA",),
         valid_from=date(2020, 1, 1),
-        state_default_period="weekly",
         verified=True,
         notes="Table 1 summary rows checked against the Week 44 2026 report; "
         "state table read when it has a text layer.",
@@ -67,8 +67,7 @@ TEMPLATES: tuple[LayoutTemplate, ...] = (
         diseases=(),
         read_summary=True,
         read_state_table=True,
-        state_default_period="cumulative",
-        notes="Last resort for unexpected layouts: treats unlabelled state columns as cumulative.",
+        notes="Last resort for unexpected layouts (any disease).",
     ),
     LayoutTemplate(
         template_id="ncdc_wer_v1",

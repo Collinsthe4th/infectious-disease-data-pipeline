@@ -364,6 +364,8 @@ def export_parquet(ctx: RunContext) -> Path | None:
                         frame[col] = frame[col].astype("string")
                     elif sample and isinstance(sample[0], Decimal):
                         frame[col] = pd.to_numeric(frame[col], errors="coerce")
+                    elif sample and isinstance(sample[0], dict):
+                        frame[col] = frame[col].map(lambda v: None if v is None else json.dumps(v, default=str))
             frame.to_parquet(out / f"{name}.parquet", index=False)
     log.info("exported Parquet files to %s", out)
     return out

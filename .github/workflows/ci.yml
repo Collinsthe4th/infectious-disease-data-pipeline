@@ -37,7 +37,7 @@ jobs:
       - name: Unit tests
         run: pytest tests/unit -q
       - name: Integration tests (PostgreSQL, full demo run, dashboard pages)
-        run: pytest tests/integration -q -x --durations=10
+        run: pytest tests/integration -q --durations=10
       - name: Schema smoke test with psql
         run: |
           sudo apt-get install -y -qq postgresql-client >/dev/null
