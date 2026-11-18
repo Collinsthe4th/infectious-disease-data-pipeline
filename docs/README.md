@@ -7,7 +7,7 @@
 | [general/](general/) | Glossary, CONTRIBUTING, CHANGELOG | You are new, or a term is unclear |
 | [blueprint/](blueprint/blueprint.md) | Blueprint and ADRs (one decision per file) | You change structure, a dependency or the design |
 | [product/](product/) | Requirements (SRS) and roadmap | You add or drop a feature |
-| [engineering/](engineering/) | Development guide, database schema, configuration, coding standards | You write code or add a setting |
+| [engineering/](engineering/) | Development guide, database schema, parser coverage on real reports, configuration, coding standards | You write code, add a setting or a template |
 | [qa/](qa/) | Test strategy | You add or change a test |
 | [operations/](operations/) | Backfill and scheduled-run runbook, scheduling options | You load history or run the pipeline every week |
 | [security/](security/README.md) | Data ethics, sources, credentials | You touch data sources, logging or secrets |

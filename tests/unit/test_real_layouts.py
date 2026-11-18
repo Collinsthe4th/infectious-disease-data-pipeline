@@ -146,6 +146,14 @@ def test_totals_without_a_this_week_heading_are_not_weekly():
     assert read_summary(content(text), 2019, epi_week=13) is None
 
 
+def test_multi_week_outbreak_summary_is_not_weekly():
+    text = ("DIPHTHERIA SITUATION REPORT\nSerial Number 01\nData as of Epi-week 03 2023\nHIGHLIGHTS\n"
+            "Wk 19 2022 – Wk 03 2023\nTOTAL SUSPECTED CASES 253\n"
+            "▪ Outbreak Summary: Epi-week 01 – 03, 2023\n‒ A total of 132 suspected cases were reported from two (2)\n"
+            "‒ Of the suspected cases reported, 89 (67.4%) were confirmed")
+    assert read_summary(content(text), 2023, epi_week=3) is None
+
+
 def test_monthly_measles_infographic_is_detected():
     c = classify("MEASLES SITUATION REPORT\nSerial Number 07\nData as at July 31st 2024\nHIGHLIGHTS\n"
                  "SITUATION UPDATES\n‒ In July, 2024:\n# Jan - July (# New in July)")

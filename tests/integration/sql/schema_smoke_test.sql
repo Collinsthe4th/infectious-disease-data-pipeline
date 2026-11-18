@@ -62,7 +62,7 @@ BEGIN
                                            suspected, confirmed, deaths, cfr_pct, last_run_id)
     VALUES (v_lassa, v_edo, 202405, v_rep1, 40, 12, 2, 16.67, v_run)
     RETURNING fact_id INTO v_fact;
-    SELECT count(*) INTO v_n FROM curated.revision_history;
+    SELECT count(*) INTO v_n FROM curated.revision_history WHERE fact_id = v_fact;
     ASSERT v_n = 0, 'insert must not create revisions';
 
     -- 4. upsert with revised figures -> revision rows -------------------------

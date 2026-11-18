@@ -319,10 +319,13 @@ def _summary_from_highlights(content: PdfContent, epi_year: int, monthly: bool =
     if not monthly and epi_week is not None:
         # current-period figures only under an explicit heading for THIS week (not a range, not the title)
         anchor_re = re.compile(rf"(?:wee?k|wk)[\s\-:]*0?{epi_week}\b(?!\s*[-–])|this\s+week|reporting\s+week", re.I)
+        range_re = re.compile(r"\s[-–—]\s|–|—|\bto\b", re.I)  # a period spanning several weeks
         anchor = next((i for i, ln in enumerate(lines[:cut]) if i >= 2 and anchor_re.search(ln)
-                       and not re.search(r"(?:wee?k|wk)\s*\d+\s*[-–]", ln, re.I)), None)
+                       and not range_re.search(ln)), None)
         if anchor is not None:
-            values.update(_highlight_values(" ".join(lines[anchor:cut])))
+            end = next((j for j in range(anchor + 1, cut if cut is not None else len(lines))
+                        if range_re.search(lines[j]) and re.search(r"wee?k|wk", lines[j], re.I)), cut)
+            values.update(_highlight_values(" ".join(lines[anchor:end])))
     if cut is not None and cumulative_is_calendar(" ".join(lines[cut:cut + 2]), epi_year):
         cum = _highlight_values(" ".join(lines[cut:cut + 25]))
         values.update({CUM_FIELD[k]: v for k, v in cum.items()})

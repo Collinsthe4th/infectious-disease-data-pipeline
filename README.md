@@ -158,6 +158,7 @@ Start at the [docs index](docs/README.md). The most useful files:
 
 - [Blueprint](docs/blueprint/blueprint.md) and [decision records](docs/blueprint/adr/)
 - [Runbook](docs/operations/runbook.md): backfill, weekly runs, reviewing quarantine
+- [Parser coverage on real NCDC reports](docs/engineering/parser_coverage.md)
 - [Development guide](docs/engineering/development.md) and [configuration](docs/engineering/configuration.md)
 
 ## Data sources and responsible use
