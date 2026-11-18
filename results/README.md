@@ -8,7 +8,7 @@ Generated automatically by the *Demo results report* workflow. Weeks covered: 04
 
 | started_at | run_type | status | files_new | rows_extracted | rows_passed | rows_warned | rows_quarantined | revisions_detected | seconds |
 |---|---|---|---|---|---|---|---|---|---|
-| 2026-11-18 22:19 | manual | success | 13 | 10505 | 10500 | 334 | 5 | 81 | 144 |
+| 2026-11-18 22:26 | manual | success | 13 | 10505 | 10500 | 334 | 5 | 81 | 118 |
 
 
 ## 2. Data quality
@@ -94,9 +94,9 @@ Rolling-origin evaluation over 55 forecast origins. Best 1-week model: **Random 
 | Random Forest | 0.686 | 0.616 | 0.700 | 0.766 |
 | SVR | 0.709 | 0.688 | 0.666 | 0.707 |
 | Gradient Boosting | 0.723 | 0.688 | 0.764 | 0.828 |
+| Negative binomial | 0.747 | 0.759 | 0.789 | 0.800 |
 | XGBoost | 0.765 | 0.737 | 0.799 | 0.858 |
 | SARIMA | 0.774 | 0.808 | 0.867 | 1.000 |
-| Negative binomial | 0.850 | 0.865 | 0.873 | 0.881 |
 | Seasonal naive | 0.850 | 0.865 | 0.873 | 0.881 |
 
 
@@ -105,7 +105,7 @@ Diebold-Mariano test against SARIMA, 1 week ahead (negative = more accurate than
 | model_name | mae | rmse | mase | dm_statistic | dm_p_value |
 |---|---|---|---|---|---|
 | Gradient Boosting | 6.326 | 9.084 | 0.723 | -0.594 | 0.555 |
-| Negative binomial | 7.436 | 11.617 | 0.850 | 0.798 | 0.428 |
+| Negative binomial | 6.535 | 8.722 | 0.747 | -0.860 | 0.394 |
 | Random Forest | 6.005 | 8.740 | 0.686 | -0.721 | 0.474 |
 | Seasonal naive | 7.436 | 11.617 | 0.850 | 0.798 | 0.428 |
 | SVR | 6.211 | 8.463 | 0.709 | -0.891 | 0.377 |
