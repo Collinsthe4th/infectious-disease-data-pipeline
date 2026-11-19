@@ -21,12 +21,16 @@ on:
           - analytics-only           # recompute trends, alerts and forecasts
           - reread-lassa             # read every Lassa report again (adds the state table, read by OCR)
           - reread-other-diseases    # read the six other diseases' reports again (new reading templates)
+          - retract-reports          # remove figures from misread reports (list them below) and read them again
           - remove-synthetic-data    # delete demo data, keep real data (safe while another load runs)
           - demo                     # synthetic data, every feature (refuses if real data is present)
           - RESET-then-real-trial    # DELETES everything, then a real trial
           - RESET-then-real-backfill # DELETES everything, then the full real history
       confirm:
         description: "For the RESET options only: type DELETE"
+        default: ""
+      reports:
+        description: "For retract-reports only: report codes or prefixes, comma-separated"
         default: ""
 
 jobs:
@@ -68,6 +72,9 @@ jobs:
             analytics-only) python -m src.orchestration.cli --plain-logs analytics ;;
             reread-lassa)   python -m src.orchestration.cli --plain-logs reread --disease LASSA --reason "state table OCR" \
                               && python -m src.orchestration.cli --plain-logs process ;;
+            retract-reports)
+              python -m src.orchestration.cli --plain-logs retract --reports "${{ github.event.inputs.reports }}" \
+                && python -m src.orchestration.cli --plain-logs process ;;
             reread-other-diseases)
               python -m src.orchestration.cli --plain-logs reread \
                 --disease CHOLERA,CSM,DIPHTHERIA,MEASLES,MPOX,YELLOW_FEVER --reason "new reading templates" \

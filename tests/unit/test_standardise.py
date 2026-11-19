@@ -55,3 +55,17 @@ def test_resolve_location(name, pcode, alias_map):
 
 def test_unknown_location_is_none(alias_map):
     assert resolve_location("Atlantis", alias_map) is None
+
+
+def test_clean_count_refuses_two_numbers_run_together():
+    """Real case: Lassa 2022 week 29, where '5890 857' (suspected, confirmed) shared one cell."""
+    import pytest
+
+    from src.extraction.standardise import clean_count
+
+    assert clean_count("1,234") == 1234
+    assert clean_count("12 345") == 12345
+    assert clean_count("5,890 (12%)") == 5890
+    for bad in ("5890 857", "134 10", "12,34"):
+        with pytest.raises(ValueError):
+            clean_count(bad)

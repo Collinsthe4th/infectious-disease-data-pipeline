@@ -26,6 +26,7 @@ from sqlalchemy import text  # noqa: E402
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from src.analytics.run import prepare_forecast_series  # noqa: E402
+from src.analytics.series import forecast_measure  # noqa: E402
 from src.common.config import get_settings  # noqa: E402
 from src.storage.db import get_engine  # noqa: E402
 
@@ -149,7 +150,7 @@ def main() -> None:
                 .agg(first_week=("week_start", "min"), last_week=("week_start", "max"),
                      weeks=("week_start", "nunique"))
                 .reset_index())
-    coverage["weekly figures"] = coverage["disease_name"].map(
+    coverage["Weekly figures"] = coverage["disease_name"].map(
         lambda d: "yes" if has_weekly.get(d) else "year-to-date totals only")
     most = coverage.sort_values("weeks", ascending=False).iloc[0]
     for c in ("first_week", "last_week"):
@@ -172,7 +173,10 @@ def main() -> None:
     ok_runs = int((runs["status"] == "success").sum())
     partial = int((runs["status"] == "partial").sum())
     failed = int((runs["status"] == "failed").sum())
-    recent = runs.head(10).assign(started_at=runs.head(10)["started_at"].astype(str).str[:16])
+    recent = runs.head(10).assign(started_at=runs.head(10)["started_at"].astype(str).str[:16]).rename(columns={
+        "started_at": "Started (UTC)", "run_type": "Type", "status": "Status", "files_new": "New files",
+        "rows_extracted": "Rows read", "rows_passed": "Rows loaded", "rows_warned": "Rows flagged",
+        "rows_quarantined": "Rows held back", "revisions_detected": "Revisions", "seconds": "Seconds"})
     add(["## 2. Pipeline runs (RQ1)", "",
          f"Out of {total_runs} recorded runs, {ok_runs} finished successfully, {partial} finished partly (the run "
          f"completed but at least one report could not be read or loaded) and {failed} failed. A partial run still "
@@ -185,8 +189,11 @@ def main() -> None:
          f"The validation rules held back {n(held)} rows in quarantine (a holding area for figures that fail a "
          "check, so they never reach the dashboard). Table 3 shows which rule stopped them. Rows that passed but "
          "looked unusual were loaded with a warning flag instead (Table 4).", "",
-         "Table 3- Rows held back, by rule", "", md_table(quarantine), "",
-         "Table 4- Warnings on loaded rows", "", md_table(flags), ""])
+         "Table 3- Rows held back, by rule", "",
+         md_table(quarantine.rename(columns={"rule": "Rule", "rows_held_back": "Rows held back",
+                                             "example": "Example reason"})), "",
+         "Table 4- Warnings on loaded rows", "",
+         md_table(flags.rename(columns={"flag_type": "Warning", "n": "Rows"})), ""])
 
     # ------------------------------------------------------------------ 4 revisions
     if revisions.empty:
@@ -194,28 +201,35 @@ def main() -> None:
     else:
         by = (revisions.groupby("disease_name").agg(revisions=("field_name", "size"),
                                                    median_lag_weeks=("revision_lag_weeks", "median"))
-              .reset_index().rename(columns={"disease_name": "Disease"}))
+              .reset_index().rename(columns={"disease_name": "Disease", "revisions": "Revisions",
+                                             "median_lag_weeks": "Median lag (weeks)"}))
+        lag = revisions["revision_lag_weeks"].median()
+        lag_text = ("0 weeks, which means most corrections came in a second report for the same week"
+                    if lag == 0 else f"{lag:.0f} week{'s' if lag != 1 else ''}")
         add(["## 4. Revisions (RQ2)", "",
              f"Later reports changed {n(len(revisions))} figures that had already been stored. The median revision "
-             f"lag (the number of weeks between the first report and the correction) was "
-             f"{revisions['revision_lag_weeks'].median():.0f} weeks. Every change is kept in the revision history "
+             f"lag (the number of weeks between the first report and the correction) was {lag_text}. Every change is kept in the revision history "
              "table with the old value, the new value and both source reports.", "",
              "Table 5- Revisions by disease", "", md_table(by, "{:.1f}"), ""])
 
     # ------------------------------------------------------------------ 5 trends
-    diseases = sorted(has_weekly[has_weekly].index)
-    fig, axes = plt.subplots(len(diseases), 1, figsize=(11, 2.1 * len(diseases)), sharex=True, squeeze=False)
-    for ax, name in zip(axes[:, 0], diseases):
+    plotted = []
+    for name in sorted(has_weekly[has_weekly].index):
         d = nat[nat["disease_name"] == name]
-        col = "confirmed" if d["confirmed"].fillna(0).sum() > 0.25 * d["suspected"].fillna(0).sum() else "suspected"
+        col = forecast_measure(d["disease_code"].iloc[0], d)
+        if d[col].notna().sum() >= 3:
+            plotted.append((name, d, col))
+    fig, axes = plt.subplots(len(plotted), 1, figsize=(11, 2.1 * len(plotted)), sharex=True, squeeze=False)
+    for ax, (name, d, col) in zip(axes[:, 0], plotted):
         ax.bar(d["week_start"], d[col], width=6, color=BLUE)
         ax.set_title(f"{name}: weekly {col} cases (Nigeria)", fontsize=9, loc="left")
     fig.tight_layout()
     fig.savefig(fig_dir / "01_weekly_cases_all_diseases.png", dpi=110)
     plt.close(fig)
     add(["## 5. Trends (RQ3)", "",
-         "Fig. 1 shows the weekly national figures for every disease that has them. Gaps are weeks with no "
-         "published report, not weeks with zero cases.", "",
+         "Fig. 1 shows the weekly national figures for every disease with at least three reported weeks. Lassa "
+         "fever and mpox are shown as confirmed cases and the others as suspected cases, the measure each "
+         "disease is analysed with. Gaps are weeks with no published report, not weeks with zero cases.", "",
          "![Weekly cases](figures/01_weekly_cases_all_diseases.png)", "",
          "Fig. 1- Weekly national cases by disease. Source: the researcher, from NCDC situation reports.", ""])
     ls = stl[stl["disease_code"] == "LASSA"].copy()
@@ -255,7 +269,7 @@ def main() -> None:
         add(["## 6. Outbreak alerts (RQ3)", "",
              "I ran the EARS C1, C2 and C3 checks (simple statistical tests from the US CDC's Early Aberration "
              "Reporting System that compare a week with the weeks before it) on every national series, and a "
-             "SARIMA residual check on the longest series. Together they flagged "
+             "SARIMA residual check on every series with more than two years of weekly data. Together they flagged "
              f"{n(int(alerts['alerts'].sum()))} weeks out of {n(int(alerts['weeks_checked'].sum()))} checks (Fig. 3).",
              "", "![Alerts](figures/03_alerts_by_disease.png)", "",
              "Fig. 3- Weeks flagged by each alert method. Source: the researcher.", "",
@@ -334,7 +348,7 @@ def main() -> None:
         dm_tbl = dm.assign(Method=dm["model_name"].map(lambda m: MODEL_LABELS.get(m, m)))[
             ["Method", "mae", "rmse", "mase", "dm_statistic", "dm_p_value"]].rename(
             columns={"mae": "MAE", "rmse": "RMSE", "mase": "MASE", "dm_statistic": "DM statistic",
-                     "dm_p_value": "p-value"})
+                     "dm_p_value": "p-value"}).sort_values("MASE")
         compare = ""
         if second is not None:
             gap = (second["mase"] - best["mase"]) / second["mase"] * 100
@@ -350,10 +364,19 @@ def main() -> None:
                        "available, I cannot say that any method is truly better than SARIMA, even though their "
                        "average errors differ.")
         else:
-            lst = ", ".join(f"{MODEL_LABELS.get(r.model_name, r.model_name)} (p = {r.dm_p_value:.3f})"
-                            for r in significant.itertuples())
-            dm_text = (f"The difference from SARIMA was statistically significant at the 5% level for {lst}. "
-                       "For the other methods the difference could be due to chance.")
+            sar = sarima["mase"].iloc[0] if not sarima.empty else None
+            better = [r for r in significant.itertuples() if sar is not None and r.mase < sar]
+            worse = [r for r in significant.itertuples() if sar is None or r.mase >= sar]
+            parts = []
+            if better:
+                parts.append("significantly more accurate than SARIMA: " + ", ".join(
+                    f"{MODEL_LABELS.get(r.model_name, r.model_name)} (p = {r.dm_p_value:.3f})" for r in better))
+            if worse:
+                parts.append("significantly less accurate than SARIMA: " + ", ".join(
+                    f"{MODEL_LABELS.get(r.model_name, r.model_name)} (p = {r.dm_p_value:.3f})" for r in worse))
+            dm_text = ("At the 5% level, the Diebold-Mariano test found these methods " + ", and these ".join(parts)
+                       + ". For the other methods the difference from SARIMA could be due to chance, so I cannot "
+                       "say that any of them is truly better or worse than SARIMA.")
         add([f"### {name}", "",
              f"The models were trained on {measure} cases. Each was tested over {int(e1['n_origins'].max())} forecast "
              f"origins. One week ahead, the most accurate method was **{best_label}** with a MASE of "

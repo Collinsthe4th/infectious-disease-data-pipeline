@@ -294,13 +294,26 @@ def _to_int(token: str) -> int:
     return _WORD_NUMBERS[token] if token in _WORD_NUMBERS else int(token.replace(",", ""))
 
 
-def _highlight_values(text: str) -> dict:
+_YEAR_RE = re.compile(r"\b(?:19|20)\d\d\b")
+
+
+def _highlight_values(text: str, epi_year: int | None = None) -> dict:
+    """Figures from highlight sentences. A sentence that covers other years ('From September 2017 to
+    September 2021, a total of 493 suspected cases') or uses 'since' is never read as this period."""
     out = {}
+    sentences = [s for s in re.split(r"(?<=[.;])\s+|[\u2022\u25aa\uf0b7\u00a7]", text) if s.strip()]
     for field_name, patterns in HIGHLIGHT_PATTERNS.items():
         for pattern in patterns:
-            m = re.search(pattern, text, re.I)
-            if m:
+            for sentence in sentences:
+                m = re.search(pattern, sentence, re.I)
+                if not m:
+                    continue
+                years = {int(y) for y in _YEAR_RE.findall(sentence)}
+                if re.search(r"\bsince\b", sentence, re.I) or (epi_year and years - {epi_year}):
+                    continue
                 out[field_name] = _to_int(m.group(1))
+                break
+            if field_name in out:
                 break
     return out
 
@@ -320,14 +333,15 @@ def _summary_from_highlights(content: PdfContent, epi_year: int, monthly: bool =
         # current-period figures only under an explicit heading for THIS week (not a range, not the title)
         anchor_re = re.compile(rf"(?:wee?k|wk)[\s\-:]*0?{epi_week}\b(?!\s*[-–])|this\s+week|reporting\s+week", re.I)
         range_re = re.compile(r"\s[-–—]\s|–|—|\bto\b", re.I)  # a period spanning several weeks
+        title_field = re.compile(r"^\s*(?:title|serial|epi[\s\-]*week|date|reporting\s*period)\b.{0,12}[:\-]", re.I)
         anchor = next((i for i, ln in enumerate(lines[:cut]) if i >= 2 and anchor_re.search(ln)
-                       and not range_re.search(ln)), None)
+                       and not range_re.search(ln) and not title_field.search(ln)), None)
         if anchor is not None:
             end = next((j for j in range(anchor + 1, cut if cut is not None else len(lines))
                         if range_re.search(lines[j]) and re.search(r"wee?k|wk", lines[j], re.I)), cut)
-            values.update(_highlight_values(" ".join(lines[anchor:end])))
+            values.update(_highlight_values(" ".join(lines[anchor:end]), epi_year))
     if cut is not None and cumulative_is_calendar(" ".join(lines[cut:cut + 2]), epi_year):
-        cum = _highlight_values(" ".join(lines[cut:cut + 25]))
+        cum = _highlight_values(" ".join(lines[cut:cut + 25]), epi_year)
         values.update({CUM_FIELD[k]: v for k, v in cum.items()})
     if not values:
         return None

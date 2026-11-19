@@ -295,6 +295,38 @@ def cmd_reread(args, settings) -> int:
     return 0
 
 
+def cmd_retract(args, settings) -> int:
+    """Remove figures loaded from specific reports (found to be misread) and read those reports again.
+
+    ``--reports`` takes report codes or code prefixes, e.g. NCDC-SITREP-LASSA-2022-W29 or
+    NCDC-SITREP-MPOX-2021. The facts whose current source is one of those reports are deleted
+    (with their revision rows and flags), and the documents go back to 'new' so the next
+    ``process`` reads them with the current parser.
+    """
+    from sqlalchemy import text
+
+    from src.storage.db import get_engine
+
+    prefixes = [p.strip() + "%" for p in args.reports.split(",") if p.strip()]
+    with get_engine(settings.database_url).begin() as conn:
+        reports = conn.execute(text(
+            """SELECT report_id, report_code, document_id FROM curated.dim_source_report
+                WHERE NOT is_synthetic AND report_code LIKE ANY(:p)"""), {"p": prefixes}).mappings().all()
+        ids = [r["report_id"] for r in reports]
+        docs = sorted({r["document_id"] for r in reports if r["document_id"]})
+        facts = conn.execute(text("DELETE FROM curated.fact_weekly_cases WHERE report_id = ANY(:i)"),
+                             {"i": ids}).rowcount if ids else 0
+        if docs and not args.no_reread:
+            conn.execute(text(
+                """UPDATE raw.documents SET processing_status = 'new',
+                          status_reason = 'figures retracted: ' || :why WHERE document_id = ANY(:d)"""),
+                {"d": docs, "why": args.reason})
+    for r in reports:
+        print(f"retracted {r['report_code']}")
+    print(f"{len(reports)} reports, {facts} figures removed, {len(docs)} files queued to be read again")
+    return 0
+
+
 def cmd_reset_db(args, settings) -> int:
     """Delete EVERYTHING (all five schemas) and recreate empty tables. Used to switch from demo to real data."""
     if not args.yes:
@@ -415,6 +447,12 @@ def build_parser() -> argparse.ArgumentParser:
     rr.add_argument("--disease", required=True, help="one code or several, comma-separated")
     rr.add_argument("--reason", default="parser updated")
     rr.set_defaults(func=cmd_reread)
+
+    rt = sub.add_parser("retract", help="remove figures from misread reports and read them again")
+    rt.add_argument("--reports", required=True, help="comma-separated report codes or prefixes")
+    rt.add_argument("--reason", default="misread figures")
+    rt.add_argument("--no-reread", action="store_true")
+    rt.set_defaults(func=cmd_retract)
 
     rd = sub.add_parser("reset-db", help="DELETE all data and recreate empty tables")
     rd.add_argument("--yes", action="store_true")

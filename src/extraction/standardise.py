@@ -73,8 +73,13 @@ def clean_count(value: object, *, dash_is_zero: bool = False) -> Optional[int]:
         return None
     if text in _DASHES:
         return 0 if dash_is_zero else None
-    text = re.sub(r"(?<=\d)[,\s](?=\d{3}\b)", "", text)
     text = re.sub(r"\(.*?\)", "", text).strip()  # "12 (3%)" -> "12"
+    if re.search(r"\d[,\s]+\d", text):
+        # Separators are accepted only as proper thousands groups ("1,234", "12 345"). Anything else,
+        # such as "5890 857", is two cells run together, not one number.
+        if not re.fullmatch(r"-?\d{1,3}(?:[,\s]\d{3})+(?:\.0+)?", text):
+            raise ValueError(f"not a single number (two values run together?): {value!r}")
+        text = re.sub(r"[,\s]", "", text)
     if re.fullmatch(r"-?\d+", text):
         return int(text)
     if re.fullmatch(r"-?\d+\.0+", text):
