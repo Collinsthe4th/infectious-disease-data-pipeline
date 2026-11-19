@@ -227,9 +227,10 @@ def main() -> None:
     fig.savefig(fig_dir / "01_weekly_cases_all_diseases.png", dpi=110)
     plt.close(fig)
     add(["## 5. Trends (RQ3)", "",
-         "Fig. 1 shows the weekly national figures for every disease with at least three reported weeks. Lassa "
-         "fever and mpox are shown as confirmed cases and the others as suspected cases, the measure each "
-         "disease is analysed with. Gaps are weeks with no published report, not weeks with zero cases.", "",
+         "Fig. 1 shows the weekly national figures for every disease with at least three reported weeks. Each "
+         "disease is shown with the measure it is analysed with: "
+         + ", ".join(f"{nm} as {c} cases" for nm, _, c in plotted)
+         + ". Gaps are weeks with no published report, not weeks with zero cases.", "",
          "![Weekly cases](figures/01_weekly_cases_all_diseases.png)", "",
          "Fig. 1- Weekly national cases by disease. Source: the researcher, from NCDC situation reports.", ""])
     ls = stl[stl["disease_code"] == "LASSA"].copy()
@@ -367,14 +368,12 @@ def main() -> None:
             sar = sarima["mase"].iloc[0] if not sarima.empty else None
             better = [r for r in significant.itertuples() if sar is not None and r.mase < sar]
             worse = [r for r in significant.itertuples() if sar is None or r.mase >= sar]
-            parts = []
-            if better:
-                parts.append("significantly more accurate than SARIMA: " + ", ".join(
-                    f"{MODEL_LABELS.get(r.model_name, r.model_name)} (p = {r.dm_p_value:.3f})" for r in better))
-            if worse:
-                parts.append("significantly less accurate than SARIMA: " + ", ".join(
-                    f"{MODEL_LABELS.get(r.model_name, r.model_name)} (p = {r.dm_p_value:.3f})" for r in worse))
-            dm_text = ("At the 5% level, the Diebold-Mariano test found these methods " + ", and these ".join(parts)
+            def phrase(rows, how):
+                names_ = [f"{MODEL_LABELS.get(r.model_name, r.model_name)} (p = {r.dm_p_value:.3f})" for r in rows]
+                joined = names_[0] if len(names_) == 1 else ", ".join(names_[:-1]) + " and " + names_[-1]
+                return f"{joined} {'was' if len(names_) == 1 else 'were'} significantly {how} accurate than SARIMA"
+            parts = ([phrase(better, "more")] if better else []) + ([phrase(worse, "less")] if worse else [])
+            dm_text = ("At the 5% level, the Diebold-Mariano test showed that " + ", and ".join(parts)
                        + ". For the other methods the difference from SARIMA could be due to chance, so I cannot "
                        "say that any of them is truly better or worse than SARIMA.")
         add([f"### {name}", "",
