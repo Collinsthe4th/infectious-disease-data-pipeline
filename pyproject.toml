@@ -9,6 +9,7 @@ description = "Automated data pipeline that monitors and analyzes infectious dis
 readme = "README.md"
 requires-python = ">=3.10"
 authors = [{ name = "Akagha Collins Chisom" }]
+license = "MIT"
 dynamic = ["dependencies"]
 
 [project.scripts]
