@@ -17,7 +17,7 @@ import json
 import logging
 import subprocess
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from decimal import Decimal
 from pathlib import Path
@@ -49,6 +49,9 @@ class RunContext:
     run_id: uuid.UUID
     stats: repo.RunStats
     failures: int = 0
+    # in-memory caches that save database round trips (they matter on a remote database)
+    known_weeks: set = field(default_factory=set)
+    latest_cumulative: dict = field(default_factory=dict)  # (disease, pcode, year) -> {cum_*, week_id}
 
     def flush(self) -> None:
         """Add this step's counters to the run log and reset them."""
@@ -323,7 +326,10 @@ def _load_report(ctx: RunContext, doc: dict, report: ReportExtraction, alias_map
         return
     with ctx.engine.begin() as conn:
         conn.execute(text("SELECT set_config('pipeline.run_id', :r, true)"), {"r": str(ctx.run_id)})
-        _ensure_week(conn, report.epi_year, report.epi_week)
+        wid = report.epi_year * 100 + report.epi_week
+        if wid not in ctx.known_weeks:
+            _ensure_week(conn, report.epi_year, report.epi_week)
+            ctx.known_weeks.add(wid)
         report_id = repo.upsert_source_report(
             conn, report_code=report.report_code, document_id=doc["document_id"], report_type=report.report_type,
             publisher="NCDC" if doc["source_name"] == "ncdc" else ("SYNTHETIC" if report.is_synthetic else "manual"),
@@ -335,6 +341,9 @@ def _load_report(ctx: RunContext, doc: dict, report: ReportExtraction, alias_map
         ctx.stats.rows_extracted += len(report.rows)
 
         def previous(disease_code: str, pcode: str, wid: int):
+            cached = ctx.latest_cumulative.get((disease_code, pcode, wid // 100))
+            if cached is not None and cached["week_id"] < wid:
+                return cached  # reports are processed in week order, so this is the latest earlier week
             return repo.previous_cumulative(conn, disease_code, pcode, wid)
 
         vctx = ValidationContext(
@@ -361,6 +370,14 @@ def _load_report(ctx: RunContext, doc: dict, report: ReportExtraction, alias_map
 
         repo.insert_staging(conn, ctx.run_id, report_id, result.passed)
         merged = repo.merge_staging(conn, ctx.run_id, report_id)
+        for row in result.passed.to_dict(orient="records"):
+            if any(row.get(c) is not None for c in ("cum_suspected", "cum_confirmed", "cum_deaths")):
+                key = (row["disease_code"], row["pcode"], int(row["epi_year"]))
+                wid = int(row["epi_year"]) * 100 + int(row["epi_week"])
+                if key not in ctx.latest_cumulative or ctx.latest_cumulative[key]["week_id"] <= wid:
+                    ctx.latest_cumulative[key] = {"cum_suspected": row.get("cum_suspected"),
+                                                  "cum_confirmed": row.get("cum_confirmed"),
+                                                  "cum_deaths": row.get("cum_deaths"), "week_id": wid}
         repo.insert_flags(conn, ctx.run_id, report_id, result.flags)
         ctx.stats.rows_passed += len(result.passed)
         ctx.stats.rows_warned += result.n_warned

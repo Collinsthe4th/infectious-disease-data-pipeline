@@ -316,7 +316,6 @@ def merge_staging(conn: Connection, run_id: uuid.UUID, report_id: int) -> dict[s
     * An older report never overwrites figures from a newer one.
     * Changed figures are copied to ``revision_history`` by the database trigger.
     """
-    before = conn.execute(text("SELECT count(*) FROM curated.revision_history")).scalar_one()
     measure_updates = ",\n".join(
         f"{c} = COALESCE(EXCLUDED.{c}, f.{c})" for c in (*MEASURE_COLUMNS, "cfr_pct", "cfr_reported")
     )
@@ -352,12 +351,17 @@ def merge_staging(conn: Connection, run_id: uuid.UUID, report_id: int) -> dict[s
         {"run_id": run_id, "report_id": report_id},
     ).all()
     inserted = sum(1 for r in result if r.inserted)
-    after = conn.execute(text("SELECT count(*) FROM curated.revision_history")).scalar_one()
+    revisions = 0
+    if len(result) > inserted:  # only updates can create revisions
+        revisions = conn.execute(
+            text("SELECT count(*) FROM curated.revision_history WHERE new_report_id = :p AND run_id = :r"),
+            {"p": report_id, "r": run_id},
+        ).scalar_one()
     conn.execute(
         text("DELETE FROM staging.weekly_cases WHERE run_id = :r AND report_id = :p"),
         {"r": run_id, "p": report_id},
     )
-    return {"inserted": inserted, "updated": len(result) - inserted, "revisions": after - before}
+    return {"inserted": inserted, "updated": len(result) - inserted, "revisions": revisions}
 
 
 # =============================================================================
