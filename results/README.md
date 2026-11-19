@@ -78,7 +78,7 @@ Table 5- Revisions by disease
 
 ## 5. Trends (RQ3)
 
-Fig. 1 shows the weekly national figures for every disease with at least three reported weeks. Lassa fever and mpox are shown as confirmed cases and the others as suspected cases, the measure each disease is analysed with. Gaps are weeks with no published report, not weeks with zero cases.
+Fig. 1 shows the weekly national figures for every disease with at least three reported weeks. Each disease is shown with the measure it is analysed with: Cerebrospinal meningitis as suspected cases, Cholera as suspected cases, Diphtheria as confirmed cases, Lassa fever as confirmed cases, Mpox as suspected cases. Gaps are weeks with no published report, not weeks with zero cases.
 
 ![Weekly cases](figures/01_weekly_cases_all_diseases.png)
 
@@ -147,7 +147,7 @@ Table 7- Lassa fever: MASE by method and weeks ahead
 | Seasonal naive | 1.093 | 1.109 | 1.125 | 1.134 |
 
 
-At the 5% level, the Diebold-Mariano test found these methods significantly less accurate than SARIMA: Seasonal naive (p = 0.013). For the other methods the difference from SARIMA could be due to chance, so I cannot say that any of them is truly better or worse than SARIMA.
+At the 5% level, the Diebold-Mariano test showed that Seasonal naive (p = 0.013) was significantly less accurate than SARIMA. For the other methods the difference from SARIMA could be due to chance, so I cannot say that any of them is truly better or worse than SARIMA.
 
 Table 8- Lassa fever: one-week-ahead accuracy and Diebold-Mariano test against SARIMA
 
