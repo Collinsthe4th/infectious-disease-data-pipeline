@@ -55,6 +55,10 @@ def main() -> int:
             diff = ((a - b).abs() / a.abs().clip(lower=1e-9)).where(~both_missing, 0.0).fillna(float("inf"))
             worst = max(worst, float(diff.max()))
         same = worst <= TOLERANCE and (merged["_merge"] == "both").all()
+        if not same:
+            show = merged[keys + ["mase_saved", "mase_rerun", "dm_p_value_saved", "dm_p_value_rerun"]].copy()
+            show["rel"] = ((show["mase_saved"] - show["mase_rerun"]).abs() / show["mase_saved"].abs()).round(6)
+            print(show.sort_values("rel", ascending=False).head(12).to_string(index=False))
         ok_all &= same
         report["diseases"][code] = {"reproduced": bool(same), "measure": measure, "rows_compared": int(len(merged)),
                                     "largest_relative_difference": worst, "weeks_used": int(len(y))}
