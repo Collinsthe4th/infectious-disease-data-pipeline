@@ -278,6 +278,23 @@ def cmd_purge_synthetic(args, settings) -> int:
     return 0 if left == 0 else 1
 
 
+def cmd_reread(args, settings) -> int:
+    """Queue already-read reports of one disease to be read again (e.g. after a parser improvement)."""
+    from sqlalchemy import text
+
+    from src.storage.db import get_engine
+
+    with get_engine(settings.database_url).begin() as conn:
+        n = conn.execute(text(
+            """UPDATE raw.documents SET processing_status = 'new',
+                      status_reason = 'queued to be read again: ' || :why
+                WHERE NOT is_synthetic AND disease_hint = :d
+                  AND processing_status IN ('parsed', 'parse_failed', 'manual_queue')"""),
+            {"d": args.disease, "why": args.reason}).rowcount
+    print(f"{n} {args.disease} files queued to be read again")
+    return 0
+
+
 def cmd_reset_db(args, settings) -> int:
     """Delete EVERYTHING (all five schemas) and recreate empty tables. Used to switch from demo to real data."""
     if not args.yes:
@@ -393,6 +410,11 @@ def build_parser() -> argparse.ArgumentParser:
     fr.set_defaults(func=cmd_finish_run)
 
     sub.add_parser("purge-synthetic", help="remove synthetic demo data, keep real data").set_defaults(func=cmd_purge_synthetic)
+
+    rr = sub.add_parser("reread", help="read one disease's reports again with the current parser")
+    rr.add_argument("--disease", required=True)
+    rr.add_argument("--reason", default="parser updated")
+    rr.set_defaults(func=cmd_reread)
 
     rd = sub.add_parser("reset-db", help="DELETE all data and recreate empty tables")
     rd.add_argument("--yes", action="store_true")
