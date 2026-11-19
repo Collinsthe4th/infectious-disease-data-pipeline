@@ -9,5 +9,6 @@ if [ -z "${DATABASE_URL:-}" ]; then
 fi
 [ -d "$REPO/.venv-airflow" ] || bash "$REPO/scripts/airflow_local/setup.sh"
 airflow db migrate | tail -3
+airflow dags reserialize | tail -3
 echo "Airflow is starting: open the 'Ports' tab and click the globe next to port 8080."
 exec airflow standalone
