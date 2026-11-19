@@ -51,11 +51,12 @@ def test_page_loads_for_sparse_disease(page, disease, sparse_data):
         assert not at.error, [e.value for e in at.error]
 
 
-def test_scorecard_shows_every_disease(sparse_data):
+def test_overview_shows_every_disease_and_a_chance_badge(sparse_data):
     testing = pytest.importorskip("streamlit.testing.v1")
     sys.path.insert(0, str(DASH))
     at = testing.AppTest.from_file(str(DASH / "app.py"), default_timeout=120).run()
-    html = " ".join(m.value for m in at.markdown)
+    labels = " ".join(m.label for m in at.metric)
     for name in ("Lassa fever", "Cholera", "Measles", "Yellow fever", "Mpox", "Diphtheria", "Cerebrospinal meningitis"):
-        assert name in html, name
-    assert "No recent weekly data" in html or "Low" in html
+        assert name in labels, name
+    html = " ".join(m.value for m in at.markdown)
+    assert "Chance of an outbreak" in html and any(x in html for x in ("High chance", "Moderate chance", "Low chance"))

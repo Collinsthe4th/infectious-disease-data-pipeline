@@ -64,3 +64,19 @@ def test_choose_measure():
     assert choose_measure(pd.DataFrame({"confirmed": [1, 2], "suspected": [100, 200]})) == "suspected"
     assert choose_measure(pd.DataFrame({"confirmed": [30, 20], "suspected": [100, 80]})) == "confirmed"
     assert choose_measure(pd.DataFrame({"confirmed": [None], "suspected": [None]})) is None
+
+
+def test_outbreak_chance_uses_forecast():
+    from src.analytics.severity import HIGH_CHANCE, LOW_CHANCE, MODERATE_CHANCE, outbreak_chance
+
+    w = weekly([10] * 156)
+    next_weeks = pd.date_range(start=w.week_start.iloc[-1] + pd.Timedelta(weeks=1), periods=4, freq="W-MON")
+    calm = pd.DataFrame({"target_week": next_weeks, "predicted": [10] * 4})
+    rising = pd.DataFrame({"target_week": next_weeks, "predicted": [16] * 4})
+    surge = pd.DataFrame({"target_week": next_weeks, "predicted": [25] * 4})
+    assert outbreak_chance(w, alerts([]), calm, today=TODAY).level == LOW_CHANCE
+    assert outbreak_chance(w, alerts([]), rising, today=TODAY).level == MODERATE_CHANCE
+    assert outbreak_chance(w, alerts([]), surge, today=TODAY).level == HIGH_CHANCE
+    one = alerts([(w.week_start.iloc[-1], "EARS_C1", True)])
+    assert outbreak_chance(w, one, rising, today=TODAY).level == HIGH_CHANCE
+    assert outbreak_chance(w, one, None, today=TODAY).level == MODERATE_CHANCE

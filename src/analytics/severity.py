@@ -135,3 +135,83 @@ def classify(
         level, reason = LOW, "No alert checks fired" + (f"; cases {', '.join(detail)}." if detail else ".")
     return Severity(level, reason, latest_week, latest, measure,
                     None if change is None or not np.isfinite(change) else change, vs_usual, fired)
+
+
+# --------------------------------------------------------------------------- #
+#  "Chance of an outbreak" badge for one selected disease (alerts + forecast)
+# --------------------------------------------------------------------------- #
+
+HIGH_CHANCE, MODERATE_CHANCE, LOW_CHANCE = "High chance", "Moderate chance", "Low chance"
+
+
+@dataclass(frozen=True)
+class OutbreakChance:
+    level: str
+    reasons: tuple[str, ...]
+    forecast_vs_usual: float | None
+    base: Severity
+
+
+def usual_level(series: pd.Series, weeks: pd.DatetimeIndex) -> float | None:
+    """Average of the same weeks of the year (±1 week) in earlier years."""
+    if series.empty:
+        return None
+    woy = series.index.isocalendar().week.astype(int)
+    vals = []
+    for w in weeks:
+        target = int(w.isocalendar()[1])
+        near = ((woy - target + 26) % 52 - 26).abs() <= 1
+        earlier = series[near & (series.index.year < w.year)]
+        if len(earlier) >= 3:
+            vals.append(float(earlier.mean()))
+    return float(np.mean(vals)) if vals else None
+
+
+def outbreak_chance(weekly: pd.DataFrame, alerts: pd.DataFrame, forecast: pd.DataFrame | None = None,
+                    *, today: date | None = None) -> OutbreakChance:
+    """Combine this week's alert checks with the 4-week forecast.
+
+    HIGH     2+ alert checks fired in the last 2 weeks; or 1 fired and the next
+             4 weeks are forecast at >= 1.5 x the usual level for the season;
+             or the forecast alone is >= 2 x usual
+    MODERATE 1 alert check fired; or the forecast is >= 1.5 x usual; or this
+             week is already >= 1.5 x usual
+    LOW      none of the above
+    ``forecast``: columns target_week, predicted (one model, next weeks).
+    """
+    base = classify(weekly, alerts, today=today)
+    if base.level == NO_DATA:
+        return OutbreakChance(NO_DATA, (base.reason,), None, base)
+
+    ratio = None
+    if forecast is not None and not forecast.empty:
+        s = (weekly.assign(week_start=pd.to_datetime(weekly["week_start"])).set_index("week_start")[base.measure]
+             .astype(float).dropna().sort_index())
+        targets = pd.DatetimeIndex(pd.to_datetime(forecast["target_week"]))
+        usual = usual_level(s, targets)
+        if usual and usual > 0:
+            ratio = float(forecast["predicted"].astype(float).mean()) / usual
+
+    n_alerts = len(base.alerts_fired)
+    reasons: list[str] = []
+    if n_alerts:
+        reasons.append(f"{n_alerts} alert check{'s' if n_alerts > 1 else ''} fired in the last 2 weeks ("
+                       + "; ".join(METHOD_LABELS.get(m, m) for m in base.alerts_fired) + ")")
+    if ratio is not None:
+        reasons.append(f"the next 4 weeks are forecast at {ratio:.1f} times the usual level for this time of year")
+    if base.vs_usual_ratio is not None and base.vs_usual_ratio >= 1.5:
+        reasons.append(f"this week is {base.vs_usual_ratio:.1f} times the usual level")
+    if base.change_vs_4wk_pct is not None and abs(base.change_vs_4wk_pct) >= 25:
+        reasons.append(f"cases are {'up' if base.change_vs_4wk_pct > 0 else 'down'} "
+                       f"{abs(base.change_vs_4wk_pct):.0f}% on the previous 4 weeks")
+
+    fc_high = ratio is not None and ratio >= 1.5
+    if n_alerts >= 2 or (n_alerts == 1 and fc_high) or (ratio is not None and ratio >= 2):
+        level = HIGH_CHANCE
+    elif n_alerts == 1 or fc_high or (base.vs_usual_ratio is not None and base.vs_usual_ratio >= 1.5 and (base.latest_cases or 0) >= 5):
+        level = MODERATE_CHANCE
+    else:
+        level = LOW_CHANCE
+    if not reasons:
+        reasons.append("no alert checks fired and cases are within the usual range")
+    return OutbreakChance(level, tuple(reasons), ratio, base)
