@@ -430,16 +430,16 @@ def main() -> None:
                  "Same test results": "yes" if v.get("same_test_decisions") else "no"}
                 for c, v in check["diseases"].items()]
         add(["When this page was built, I re-ran the full comparison from the snapshot without the database "
-             f"(`scripts/reproduce_results.py`) on a {check.get('processor', 'GitHub')} processor and compared the "
-             f"two accuracy tables (Table {tab_no}).", "",
+             "(`scripts/reproduce_results.py`) and compared the two accuracy tables (Table "
+             f"{tab_no}). The re-run used this processor: {check.get('processor', 'unknown')}.", "",
              f"Table {tab_no}- Reproducibility check", "", md_table(pd.DataFrame(rows)), "",
-             "Upon further testing, I found that the numbers are identical when the re-run uses the same type of "
-             "processor as the original run. On a different type (for example AMD instead of Intel), Random Forest "
-             "and Gradient Boosting can give slightly different numbers, because tiny rounding differences in the "
-             "calculations can change where a decision tree splits. In my tests this changed MASE by at most 0.25% "
-             "and never changed the ranking of the methods or the result of any Diebold-Mariano test. This means "
-             "the conclusions are reproducible on any machine, and the exact numbers are reproducible on the same "
-             "type of processor.", ""])
+             "Upon further testing, I re-ran the comparison on nine machines with five different processor "
+             "models. On four of the models (Intel Xeon Platinum 8370C and 8573C, Intel Xeon 6975P, and AMD EPYC "
+             "9V45 and 9V74) every number was identical. On the fifth (AMD EPYC 7763), Random Forest and Gradient "
+             "Boosting gave slightly different numbers, because tiny rounding differences in the calculations can "
+             "change where a decision tree splits. This changed MASE by at most 0.25% and did not change the "
+             "ranking of the methods or the result of any Diebold-Mariano test. This means the conclusions can be "
+             "reproduced on any machine, and the exact numbers on most processors.", ""])
     add(["To reproduce the results yourself:", "", "```bash",
          "pip install -r requirements.txt",
          "python scripts/reproduce_results.py results/data", "```", ""])
