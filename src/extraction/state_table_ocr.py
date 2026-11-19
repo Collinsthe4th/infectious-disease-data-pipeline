@@ -176,12 +176,19 @@ def _treatments(cell, scale: float):
 
 
 def _read_number(cell, scale: float) -> int:
-    """Digits in one cell, or -1 when there is ink but no reading. Tries a few image treatments."""
+    """Digits in one cell, or -1 when there is ink but no reading.
+
+    Two different image treatments must agree; when they do not, further treatments
+    break the tie (the first reading seen twice wins)."""
+    seen: list[int] = []
     for img, psm, up in _treatments(cell, scale)[:5]:
         text = "".join(wd["text"] for wd in _tesseract(img, psm=psm, whitelist="0123456789", upscale=up))
         if text.isdigit():
-            return int(text)
-    return -1
+            value = int(text)
+            if value in seen:
+                return value
+            seen.append(value)
+    return seen[0] if seen else -1
 
 
 def _alternatives(cell, scale: float) -> set[int]:
@@ -288,7 +295,7 @@ def read_table_image(image, alias_map: Mapping[str, str], national_cum_confirmed
 
     total = values[-1]
     corrections = []
-    for col in NUMERIC:
+    for col in MEASURE_OF:
         t = total.get(col, -1)
         if t >= 0 and sum(max(v.get(col, 0), 0) for v in values[:-1]) != t:
             note = _repair_column(col, labels, values, cells, scale, t)
@@ -298,17 +305,21 @@ def read_table_image(image, alias_map: Mapping[str, str], national_cum_confirmed
     table = StateTable(rows=state_rows, total=total, names={n: match_state(n, alias_map) for n in state_rows},
                        corrections=corrections)
 
-    # --- checks
+    # --- checks (only the columns the pipeline stores; Probable and HCW columns are not used)
+    used = tuple(MEASURE_OF)
     for name, row in state_rows.items():
-        bad = [c for c, v in row.items() if v < 0]
+        bad = [c for c in used if row.get(c, 0) < 0]
         if bad:
             table.problems.append(f"unreadable cell(s) for {name}: {', '.join(bad)}")
-    if any(v < 0 for v in total.values()):
-        table.problems.append("unreadable cell(s) in the Total row")
-    for col in NUMERIC:
+    for col in used:
         s = sum(max(r.get(col, 0), 0) for r in state_rows.values())
         t = total.get(col)
         ok = t is not None and t >= 0 and s == t
+        if not ok and col == "cum_confirmed" and national_cum_confirmed is not None and s == national_cum_confirmed:
+            # The Total row was misread but the states add up exactly to Table 1's national figure.
+            table.corrections.append(f"Total row read as {t}; states add up to Table 1's {s}, which is used")
+            total[col] = t = s
+            ok = True
         table.checks[col] = (s, t, ok)
         if not ok:
             table.problems.append(f"{col}: states add up to {s} but the Total row says {t}")

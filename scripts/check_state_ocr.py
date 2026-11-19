@@ -18,7 +18,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from src.common.config import get_settings  # noqa: E402
 from src.common.text import normalise_alias  # noqa: E402
-from src.extraction.extract import ExtractionError, extract_pdf  # noqa: E402
+from src.extraction.extract import extract_pdf  # noqa: E402
 from src.ingestion.http import PoliteSession  # noqa: E402
 from src.ingestion.ncdc_crawler import NcdcCrawler  # noqa: E402
 
@@ -56,8 +56,8 @@ def main() -> None:
         t0 = time.time()
         try:
             ex = extract_pdf({"sha256": f.sha256, "listing_title": e.title, "disease_hint": "LASSA"}, f.path, amap)
-        except ExtractionError as exc:
-            lines.append(f"| {e.title} | not read | 0 | {exc} |")
+        except Exception as exc:  # noqa: BLE001 - a broken PDF must not stop the check
+            lines.append(f"| {e.title} | not read | 0 | {type(exc).__name__}: {str(exc)[:120]} |")
             continue
         states = ex.rows[ex.rows["location_raw"] != "National"]
         ok = len(states) > 0
