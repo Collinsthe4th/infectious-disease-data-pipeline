@@ -88,6 +88,27 @@ def round_coords(obj, nd=3):
     return obj
 
 
+def _signed_area(ring) -> float:
+    return sum(x1 * y2 - x2 * y1 for (x1, y1), (x2, y2) in zip(ring, ring[1:] + ring[:1])) / 2
+
+
+def rewind(geom: dict) -> dict:
+    """Outer rings clockwise, holes anticlockwise: the order Plotly (d3-geo) expects.
+
+    geoBoundaries ships the opposite (GeoJSON RFC 7946) order; Plotly then fills
+    "the whole globe except the state" and the map looks blank."""
+    polys = [geom["coordinates"]] if geom["type"] == "Polygon" else geom["coordinates"]
+    fixed = []
+    for poly in polys:
+        rings = []
+        for i, ring in enumerate(poly):
+            clockwise = _signed_area(ring) < 0
+            want_clockwise = i == 0
+            rings.append(ring if clockwise == want_clockwise else ring[::-1])
+        fixed.append(rings)
+    return {"type": geom["type"], "coordinates": fixed[0] if geom["type"] == "Polygon" else fixed}
+
+
 def update_boundaries() -> None:
     api = requests.get("https://www.geoboundaries.org/api/current/gbOpen/NGA/ADM1/", headers=UA, timeout=60).json()
     url = api.get("simplifiedGeometryGeoJSON") or api["gjDownloadURL"]
@@ -102,7 +123,7 @@ def update_boundaries() -> None:
             missing.append(name)
             continue
         geom = f["geometry"]
-        geom = {"type": geom["type"], "coordinates": round_coords(geom["coordinates"])}
+        geom = rewind({"type": geom["type"], "coordinates": round_coords(geom["coordinates"])})
         features.append({"type": "Feature", "properties": {"pcode": pc, "shapeName": name}, "geometry": geom})
     if missing:
         raise SystemExit(f"unmatched boundary names: {missing}")

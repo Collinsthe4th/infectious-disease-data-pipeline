@@ -59,6 +59,5 @@ def test_overview_shows_every_disease_and_a_chance_badge(sparse_data):
     assert not at.exception
     for name in ("Lassa fever", "Cholera", "Measles", "Yellow fever", "Mpox", "Diphtheria", "Cerebrospinal meningitis"):
         assert name in html, name  # a card this week, or listed under "not reported this week"
-    badge = ("High chance of an outbreak", "Moderate chance of an outbreak", "Low chance of an outbreak",
-             "No recent weekly data")
-    assert any(x in html for x in badge)
+    assert "Chance of an outbreak" in html
+    assert any(x in html for x in ("High chance", "Moderate chance", "Low chance", "No recent data"))

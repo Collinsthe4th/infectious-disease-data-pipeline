@@ -129,24 +129,60 @@ if run_id:
         forecast = live[live["model_name"] == best]
 
 chance = outbreak_chance(nat, alerts, forecast)
-STYLE = {HIGH_CHANCE: ("🔴", "#e5484d"), MODERATE_CHANCE: ("🟠", "#f59e0b"),
-         LOW_CHANCE: ("🟢", "#30a46c"), NO_DATA: ("⚪", "#8b8d98")}
-icon, fg = STYLE[chance.level]
-items = "".join(f"<li>{r[0].upper() + r[1:]}</li>" for r in chance.reasons)
-fc_line = ""
+# Risk readout: a three-step scale with the current level lit, then the evidence as plain figures.
+TONE = {HIGH_CHANCE: "#c62828", MODERATE_CHANCE: "#c2570c", LOW_CHANCE: "#2e7d32", NO_DATA: "#8b8d98"}
+SHORT = {HIGH_CHANCE: "High", MODERATE_CHANCE: "Moderate", LOW_CHANCE: "Low", NO_DATA: "No recent data"}
+tone = TONE[chance.level]
+steps = "".join(
+    f'<div class="rk-step{" on" if lvl == chance.level else ""}" style="--c:{TONE[lvl]}">{SHORT[lvl]}</div>'
+    for lvl in (LOW_CHANCE, MODERATE_CHANCE, HIGH_CHANCE))
+b = chance.base
+
+
+def figure(value: str, label: str) -> str:
+    return f'<div class="rk-fig"><div class="v">{value}</div><div class="l">{label}</div></div>'
+
+
+figs = []
 if chance.forecast_mean is not None:
-    usual = f" (usual for this time of year: about {chance.forecast_usual:.0f})" if chance.forecast_usual else ""
-    fc_line = (f'<div style="margin-top:8px;font-size:.9rem"><b>Next 4 weeks:</b> about {chance.forecast_mean:.0f} '
-               f"confirmed cases a week{usual}</div>")
-st.markdown(
-    f"""<div style="border:1px solid {fg};border-left:8px solid {fg};border-radius:14px;padding:12px 16px;
-    background:{fg}1a;margin:6px 0 4px">
-    <div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap">
-      <span style="font-size:1.5rem;font-weight:700;color:{fg}">{icon} {chance.level + (" of an outbreak" if chance.level != NO_DATA else "")}</span>
-      <span style="font-size:.9rem;opacity:.8">{name}</span></div>
-    {fc_line}
-    <ul style="margin:6px 0 0 0;padding-left:18px;font-size:.88rem">{items}</ul></div>""",
-    unsafe_allow_html=True)
+    figs.append(figure(f"{chance.forecast_mean:.0f}", "confirmed cases a week<br>forecast, next 4 weeks"))
+if chance.forecast_usual:
+    figs.append(figure(f"{chance.forecast_usual:.0f}", "usual for this<br>time of year"))
+if b.vs_usual_ratio is not None:
+    figs.append(figure(f"{b.vs_usual_ratio:.1f}×", "this week compared<br>with usual"))
+figs.append(figure(str(len(b.alerts_fired)), "alert checks fired<br>in the last 2 weeks"))
+summary = chance.reasons[0][0].upper() + chance.reasons[0][1:] if chance.level == NO_DATA else {
+    HIGH_CHANCE: "Cases are, or are forecast to be, well above the usual level for this time of year.",
+    MODERATE_CHANCE: "Cases are above the usual level for this time of year; worth watching closely.",
+    LOW_CHANCE: "Cases are within the usual range for this time of year.",
+}[chance.level]
+
+st.markdown(f"""<style>
+.rk{{--tone:{tone};border:1px solid rgba(128,128,128,.28);border-radius:12px;overflow:hidden;margin:4px 0 6px}}
+.rk-top{{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:14px;
+  padding:14px 18px;background:color-mix(in srgb,var(--tone) 14%,transparent);border-bottom:3px solid var(--tone)}}
+.rk-kicker{{font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;opacity:.7}}
+.rk-level{{font-size:1.7rem;font-weight:750;color:var(--tone);line-height:1.15}}
+.rk-scale{{display:flex;gap:4px}}
+.rk-step{{min-width:78px;text-align:center;font-size:.75rem;font-weight:600;padding:5px 8px;border-radius:6px;
+  border:1px solid rgba(128,128,128,.35);opacity:.55}}
+.rk-step.on{{background:var(--c);border-color:var(--c);color:#fff;opacity:1}}
+.rk-body{{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:0}}
+.rk-fig{{padding:12px 18px;border-right:1px solid rgba(128,128,128,.2)}}
+.rk-fig:last-child{{border-right:none}}
+.rk-fig .v{{font-size:1.45rem;font-weight:700;font-variant-numeric:tabular-nums}}
+.rk-fig .l{{font-size:.74rem;opacity:.7;line-height:1.3}}
+.rk-note{{padding:9px 18px;font-size:.85rem;border-top:1px solid rgba(128,128,128,.2)}}
+</style>
+<div class="rk" role="region" aria-label="Chance of an outbreak, {name}">
+  <div class="rk-top">
+    <div><div class="rk-kicker">Chance of an outbreak · {name}</div>
+      <div class="rk-level">{SHORT[chance.level]}{" chance" if chance.level != NO_DATA else ""}</div></div>
+    <div class="rk-scale" aria-hidden="true">{steps}</div>
+  </div>
+  <div class="rk-body">{"".join(figs)}</div>
+  <div class="rk-note">{summary}</div>
+</div>""", unsafe_allow_html=True)
 st.caption(("" if forecast is not None else "No forecast for this disease (forecasts are made for Lassa fever), "
             "so this uses the alert checks and recent weeks only. ")
            + "A research indicator to show where to look first — not an official NCDC alert.")
