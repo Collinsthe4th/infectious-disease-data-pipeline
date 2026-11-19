@@ -82,13 +82,13 @@ Fig. 1 shows the weekly national figures for every disease with at least three r
 
 ![Weekly cases](figures/01_weekly_cases_all_diseases.png)
 
-Fig. 1- Weekly national cases by disease. Source: the researcher, from NCDC situation reports.
+Fig. 1- Weekly national cases by disease. Source: Collins C. Akagha (2026), using NCDC situation reports.
 
 I split the Lassa fever series into a trend and a seasonal pattern with STL (Seasonal-Trend decomposition using Loess). The seasonal pattern is highest in February, which matches the dry-season peak that NCDC describes every year (Fig. 2).
 
 ![Lassa STL](figures/02_lassa_stl.png)
 
-Fig. 2- Lassa fever trend and seasonal pattern (STL). Source: the researcher.
+Fig. 2- Lassa fever trend and seasonal pattern (STL). Source: Collins C. Akagha (2026).
 
 ## 6. Outbreak alerts (RQ3)
 
@@ -96,7 +96,7 @@ I ran the EARS C1, C2 and C3 checks (simple statistical tests from the US CDC's 
 
 ![Alerts](figures/03_alerts_by_disease.png)
 
-Fig. 3- Weeks flagged by each alert method. Source: the researcher.
+Fig. 3- Weeks flagged by each alert method. Source: Collins C. Akagha (2026).
 
 Table 6- Alert checks by disease and method
 
@@ -132,7 +132,7 @@ The models were trained on confirmed cases. Each was tested over 55 forecast ori
 
 ![MASE Lassa fever](figures/04_lassa_mase.png)
 
-Fig. 4- Lassa fever: MASE by method and forecast horizon (the red line marks the seasonal naive benchmark). Source: the researcher.
+Fig. 4- Lassa fever: MASE by method and forecast horizon (the red line marks the seasonal naive benchmark). Source: Collins C. Akagha (2026).
 
 Table 7- Lassa fever: MASE by method and weeks ahead
 
@@ -163,7 +163,7 @@ Table 8- Lassa fever: one-week-ahead accuracy and Diebold-Mariano test against S
 
 ![Forecast Lassa fever](figures/05_lassa_forecast.png)
 
-Fig. 5- Lassa fever: one-week-ahead backtest and the forecast for the next four weeks. Source: the researcher.
+Fig. 5- Lassa fever: one-week-ahead backtest and the forecast for the next four weeks. Source: Collins C. Akagha (2026).
 
 ### Diseases without a forecast
 

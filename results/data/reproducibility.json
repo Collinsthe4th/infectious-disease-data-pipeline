@@ -1,6 +1,6 @@
 {
   "as_of": "2026-11-19",
-  "code_version": "87b5c4287894",
+  "code_version": "6e458701f0c3",
   "processor": "AMD EPYC 9V45 96-Core Processor",
   "diseases": {
     "LASSA": {
