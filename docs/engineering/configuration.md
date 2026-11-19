@@ -15,7 +15,7 @@ All settings are environment variables (or lines in `.env`). Defaults follow Cha
 | `CFR_TOLERANCE_PP` | 0.1 | rule 5 |
 | `TIMELINESS_DAYS` | 14 | rule 11 |
 | `PROVISIONAL_WEEKS` | 4 | recent weeks flagged provisional |
-| `FORECAST_DISEASE` | `LASSA` | disease code to forecast |
+| `FORECAST_DISEASES` | `ALL` | diseases to forecast (comma-separated codes, or ALL). Each must also have about two years of regular, recent weekly reports (`forecast_eligibility`) |
 | `FORECAST_LOCATIONS` | `NG` | comma-separated p-codes (`NG` = national, e.g. `NG,NG029,NG012`) |
 | `FORECAST_HORIZONS` | 4 | weeks ahead |
 | `EVALUATION_WEEKS` | 52 | rolling-origin test window |

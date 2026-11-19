@@ -22,7 +22,13 @@ from src.analytics.anomaly import all_ears, residual_zscores, signals_frame
 from src.analytics.decomposition import stl_decompose
 from src.analytics.evaluation import mase_scale, summarise
 from src.analytics.forecasting import Sarima, available_models, live_forecast, rolling_origin
-from src.analytics.series import model_ready, to_weekly_series
+from src.analytics.series import (
+    forecast_eligibility,
+    forecast_measure,
+    model_ready,
+    regular_stretch,
+    to_weekly_series,
+)
 from src.common.config import Settings
 from src.storage import repository as repo
 
@@ -86,18 +92,23 @@ def run_analytics(engine: Engine, run_id: uuid.UUID, settings: Settings, *, fore
         summary.active_alerts += active
 
     if forecast:
-        for pcode in settings.forecast_locations:
-            key = (settings.forecast_disease, pcode)
-            if key not in frames:
-                summary.skipped.append(f"no data to forecast {key}")
+        wanted = set(settings.forecast_diseases)
+        for (disease_code, pcode), frame in frames.items():
+            if pcode not in settings.forecast_locations or ("ALL" not in wanted and disease_code not in wanted):
                 continue
-            disease_id, location_id, _ = ids[key]
-            raw = to_weekly_series(frames[key], "confirmed")
-            filled, _ = model_ready(raw)
+            disease_id, location_id, _ = ids[(disease_code, pcode)]
+            measure = forecast_measure(disease_code, frame)
+            raw = to_weekly_series(frame, measure)
+            ok, why = forecast_eligibility(raw, settings.forecast_horizons)
+            if not ok:
+                summary.skipped.append(f"no forecast for {disease_code} {pcode}: {why}")
+                continue
+            filled, _ = model_ready(regular_stretch(raw))
             if len(filled) < 2 * 52 + settings.forecast_horizons + 8:
-                summary.skipped.append(f"series {key} too short to forecast ({len(filled)} weeks)")
+                summary.skipped.append(f"no forecast for {disease_code} {pcode}: regular stretch only {len(filled)} weeks")
                 continue
             f_written, e_written = _forecast_series(engine, run_id, settings, disease_id, location_id, filled)
+            log.info("forecast %s %s (%s): %s", disease_code, pcode, measure, why)
             summary.forecasts_written += f_written
             summary.evaluations_written += e_written
 

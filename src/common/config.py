@@ -69,7 +69,8 @@ class Settings:
     provisional_weeks: int = field(default_factory=lambda: _env_int("PROVISIONAL_WEEKS", 4))
 
     # --- analytics (Section 3.5.4) -------------------------------------------
-    forecast_disease: str = field(default_factory=lambda: os.environ.get("FORECAST_DISEASE", "LASSA"))
+    # Diseases to try to forecast ("ALL" = all seven); each must also pass forecast_eligibility().
+    forecast_diseases: list[str] = field(default_factory=lambda: _env_list("FORECAST_DISEASES", ["ALL"]))
     forecast_locations: list[str] = field(
         default_factory=lambda: _env_list("FORECAST_LOCATIONS", ["NG"])  # p-codes; NG = national
     )
