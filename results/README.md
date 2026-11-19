@@ -8,7 +8,7 @@ Generated automatically by the *Demo results report* workflow. Weeks covered: 04
 
 | started_at | run_type | status | files_new | rows_extracted | rows_passed | rows_warned | rows_quarantined | revisions_detected | seconds |
 |---|---|---|---|---|---|---|---|---|---|
-| 2026-11-19 09:33 | manual | success | 13 | 10505 | 10500 | 334 | 5 | 81 | 155 |
+| 2026-11-19 10:58 | manual | success | 13 | 10505 | 10500 | 334 | 5 | 81 | 218 |
 
 
 ## 2. Data quality
@@ -105,11 +105,11 @@ Diebold-Mariano test against SARIMA, 1 week ahead (negative = more accurate than
 | model_name | mae | rmse | mase | dm_statistic | dm_p_value |
 |---|---|---|---|---|---|
 | Gradient Boosting | 6.326 | 9.084 | 0.723 | -0.594 | 0.555 |
-| Negative binomial | 6.535 | 8.722 | 0.747 | -0.860 | 0.394 |
-| Random Forest | 6.005 | 8.740 | 0.686 | -0.721 | 0.474 |
+| Negative binomial | 6.535 | 8.722 | 0.747 | -0.859 | 0.394 |
+| Random Forest | 6.004 | 8.738 | 0.686 | -0.722 | 0.474 |
 | Seasonal naive | 7.436 | 11.617 | 0.850 | 0.798 | 0.428 |
 | SVR | 6.211 | 8.463 | 0.709 | -0.891 | 0.377 |
-| XGBoost | 6.692 | 9.460 | 0.765 | -0.156 | 0.877 |
+| XGBoost | 6.692 | 9.460 | 0.765 | -0.155 | 0.877 |
 
 
 ![forecast](figures/04_lassa_forecast.png)
