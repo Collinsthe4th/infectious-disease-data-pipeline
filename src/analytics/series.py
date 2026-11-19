@@ -101,7 +101,9 @@ def regular_stretch(raw: pd.Series, min_block_coverage: float = 0.5) -> pd.Serie
     start = end
     while True:
         block = raw[(raw.index > start - pd.Timedelta(weeks=52)) & (raw.index <= start)]
-        if len(block) < 52 or block.notna().mean() < min_block_coverage:
+        if block.empty or block.notna().mean() < min_block_coverage:
             break
+        if len(block) < 52:  # the first, partial year of the series: keep it if it is well reported
+            return raw
         start = start - pd.Timedelta(weeks=52)
     return raw[raw.index > start]

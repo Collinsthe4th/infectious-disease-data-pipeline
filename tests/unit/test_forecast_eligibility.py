@@ -39,3 +39,8 @@ def test_forecast_measure():
     assert forecast_measure("LASSA", frame) == "confirmed"  # fixed by the study design
     assert forecast_measure("CHOLERA", frame) == "suspected"
     assert forecast_measure("MPOX", pd.DataFrame({"confirmed": [10, 12], "suspected": [20, 25]})) == "confirmed"
+
+
+def test_regular_stretch_keeps_a_well_reported_first_partial_year():
+    s = pd.Series(10.0, index=pd.date_range("2021-01-04", periods=134, freq="W-MON"))
+    assert len(regular_stretch(s)) == 134
