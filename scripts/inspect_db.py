@@ -14,6 +14,12 @@ from src.storage.db import get_engine  # noqa: E402
 pd.set_option("display.width", 200)
 pd.set_option("display.max_rows", 200)
 QUERIES = {
+    "Largest weekly values per disease (national)": """
+        SELECT * FROM (
+          SELECT disease_code, week_start, epi_year, epi_week, suspected, confirmed, deaths, cum_suspected,
+                 report_code, row_number() OVER (PARTITION BY disease_code ORDER BY suspected DESC NULLS LAST) AS rk
+            FROM curated.v_weekly_cases WHERE admin_level = 0 AND NOT is_synthetic) x
+         WHERE rk <= 3 ORDER BY disease_code, rk""",
     "Documents by disease and status": """
         SELECT disease_hint, processing_status, count(*) AS files, max(listing_date) AS newest_listing
           FROM raw.documents WHERE NOT is_synthetic GROUP BY 1, 2 ORDER BY 1, 2""",
