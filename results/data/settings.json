@@ -1,0 +1,11 @@
+{
+  "as_of": "2026-11-19",
+  "code_version": "877a8b7f518d",
+  "settings": {
+    "forecast_horizons": 4,
+    "evaluation_weeks": 52,
+    "random_seed": 42,
+    "sarima_refit_every": 13,
+    "forecast_max_staleness_weeks": 26
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "as_of": "2026-11-19",
+  "code_version": "877a8b7f518d",
+  "diseases": {
+    "LASSA": {
+      "reproduced": true,
+      "measure": "confirmed",
+      "rows_compared": 48,
+      "largest_relative_difference": 3.823041347914462e-15,
+      "weeks_used": 304
+    }
+  }
+}
