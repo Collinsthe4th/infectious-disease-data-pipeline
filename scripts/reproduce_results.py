@@ -86,8 +86,14 @@ def main() -> int:
             show = merged[keys + ["mase_saved", "mase_rerun", "dm_p_value_saved", "dm_p_value_rerun"]].copy()
             show["rel"] = ((show["mase_saved"] - show["mase_rerun"]).abs() / show["mase_saved"].abs()).round(6)
             print(show.sort_values("rel", ascending=False).head(12).to_string(index=False))
-        print(f"{code}: {'reproduced' if same else 'DIFFERENT'} "
-              f"({len(merged)} rows, largest relative difference {worst:.2e})")
+        ok_all &= same
+        report["diseases"][code] = {"reproduced": bool(same), "identical": bool(identical), "measure": measure,
+                                    "rows_compared": int(len(merged)), "largest_relative_difference": worst,
+                                    "largest_mase_difference": mase_rel, "same_ranking": bool(same_ranking),
+                                    "same_test_decisions": same_tests, "weeks_used": int(len(y))}
+        print(f"{code}: {'identical' if identical else ('same conclusions' if same else 'DIFFERENT')} "
+              f"({len(merged)} rows, largest MASE difference {mase_rel:.2%}, ranking "
+              f"{'same' if same_ranking else 'changed'}, tests {'same' if same_tests else 'changed'})")
     (folder / "reproducibility.json").write_text(json.dumps(report, indent=2), encoding="utf-8")
     return 0 if ok_all else 1
 
