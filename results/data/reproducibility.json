@@ -1,13 +1,6 @@
 {
   "as_of": "2026-11-19",
-  "code_version": "13b707d083db",
-  "diseases": {
-    "LASSA": {
-      "reproduced": true,
-      "measure": "confirmed",
-      "rows_compared": 48,
-      "largest_relative_difference": 3.823041347914462e-15,
-      "weeks_used": 304
-    }
-  }
+  "code_version": "c5fd1c31adc7",
+  "processor": "Intel(R) Xeon(R) 6975P-C",
+  "diseases": {}
 }

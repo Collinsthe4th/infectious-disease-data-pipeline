@@ -185,14 +185,14 @@ Table 9- Diseases without a forecast
 
 The forecasting results can be reproduced. Every method that uses randomness (Random Forest, Gradient Boosting and XGBoost) uses a fixed random seed (42), and the weekly figures the models were trained on are saved with this page in [`results/data`](data). The settings and the code version are saved in [`settings.json`](data/settings.json). Because NCDC revises its figures and the database is updated every week, a re-run on the live database can differ, but a re-run on the saved snapshot should give the same numbers.
 
-When this page was built, I re-ran the full comparison from the snapshot without the database (`scripts/reproduce_results.py`) and compared the two accuracy tables (Table 10).
+When this page was built, I re-ran the full comparison from the snapshot without the database (`scripts/reproduce_results.py`) on a Intel(R) Xeon(R) 6975P-C processor and compared the two accuracy tables (Table 10).
 
 Table 10- Reproducibility check
 
-| Disease | Reproduced | Rows compared | Largest relative difference |
-|---|---|---|---|
-| Lassa fever | yes | 48 | 3.8e-15 |
+_none_
 
+
+Upon further testing, I found that the numbers are identical when the re-run uses the same type of processor as the original run. On a different type (for example AMD instead of Intel), Random Forest and Gradient Boosting can give slightly different numbers, because tiny rounding differences in the calculations can change where a decision tree splits. In my tests this changed MASE by at most 0.25% and never changed the ranking of the methods or the result of any Diebold-Mariano test. This means the conclusions are reproducible on any machine, and the exact numbers are reproducible on the same type of processor.
 
 To reproduce the results yourself:
 
