@@ -30,7 +30,7 @@ def settings(tmp_path_factory):
     shutil.copytree(REPO / "data" / "reference", data_dir / "reference")
     env = {
         "DATABASE_URL": TEST_URL or "", "DATA_DIR": str(data_dir), "EVALUATION_WEEKS": "4",
-        "SARIMA_REFIT_EVERY": "100", "FORECAST_LOCATIONS": "NG", "STUDY_END_YEAR": "2026",
+        "SARIMA_REFIT_EVERY": "100", "FORECAST_MAX_STALENESS_WEEKS": "5000", "FORECAST_LOCATIONS": "NG", "STUDY_END_YEAR": "2026",
     }
     os.environ.update(env)
     from src.common.config import get_settings

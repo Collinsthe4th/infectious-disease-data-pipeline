@@ -65,7 +65,8 @@ def forecast_measure(disease_code: str, frame: pd.DataFrame) -> str:
     return "suspected"
 
 
-def forecast_eligibility(raw: pd.Series, horizons: int, today: pd.Timestamp | None = None) -> tuple[bool, str]:
+def forecast_eligibility(raw: pd.Series, horizons: int, today: pd.Timestamp | None = None,
+                         max_staleness_weeks: int = MAX_STALENESS_WEEKS) -> tuple[bool, str]:
     """Is there enough recent, regular weekly data to train and test the forecasting models?
 
     The models (seasonal naive, SARIMA with a 52-week season, and the machine-learning
@@ -79,7 +80,7 @@ def forecast_eligibility(raw: pd.Series, horizons: int, today: pd.Timestamp | No
     last = obs.index.max()
     today = pd.Timestamp(today or pd.Timestamp.today()).normalize()
     stale = (today - last).days // 7
-    if stale > MAX_STALENESS_WEEKS:
+    if stale > max_staleness_weeks:
         return False, f"no weekly report since {last:%d %b %Y}, so a forecast would not be about the coming weeks"
     window = raw[raw.index > last - pd.Timedelta(weeks=need)]
     coverage = window.notna().sum() / need

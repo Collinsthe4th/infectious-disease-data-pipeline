@@ -71,6 +71,8 @@ class Settings:
     # --- analytics (Section 3.5.4) -------------------------------------------
     # Diseases to try to forecast ("ALL" = all seven); each must also pass forecast_eligibility().
     forecast_diseases: list[str] = field(default_factory=lambda: _env_list("FORECAST_DISEASES", ["ALL"]))
+    # No live forecast from data older than this many weeks (forecast_eligibility).
+    forecast_max_staleness_weeks: int = field(default_factory=lambda: _env_int("FORECAST_MAX_STALENESS_WEEKS", 26))
     forecast_locations: list[str] = field(
         default_factory=lambda: _env_list("FORECAST_LOCATIONS", ["NG"])  # p-codes; NG = national
     )

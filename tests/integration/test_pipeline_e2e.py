@@ -78,7 +78,8 @@ def test_analytics_outputs(engine, demo_run):
     assert scalar(engine, "SELECT count(*) FROM analytics.alert") > 100
     live = scalar(engine, "SELECT count(*) FROM analytics.forecast WHERE NOT is_backtest")
     models = scalar(engine, "SELECT count(DISTINCT model_name) FROM analytics.forecast WHERE NOT is_backtest")
-    assert models >= 5 and live == models * 4
+    series = scalar(engine, "SELECT count(DISTINCT (disease_id, location_id)) FROM analytics.forecast WHERE NOT is_backtest")
+    assert models >= 5 and series >= 1 and live == models * 4 * series
     assert scalar(engine, "SELECT count(*) FROM analytics.model_evaluation WHERE mase IS NOT NULL") > 0
     assert scalar(engine, "SELECT count(*) FROM analytics.alert WHERE method = 'SARIMA_RESID_Z'") > 0
 

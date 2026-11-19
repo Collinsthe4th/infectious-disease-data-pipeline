@@ -99,7 +99,8 @@ def run_analytics(engine: Engine, run_id: uuid.UUID, settings: Settings, *, fore
             disease_id, location_id, _ = ids[(disease_code, pcode)]
             measure = forecast_measure(disease_code, frame)
             raw = to_weekly_series(frame, measure)
-            ok, why = forecast_eligibility(raw, settings.forecast_horizons)
+            ok, why = forecast_eligibility(raw, settings.forecast_horizons,
+                                           max_staleness_weeks=settings.forecast_max_staleness_weeks)
             if not ok:
                 summary.skipped.append(f"no forecast for {disease_code} {pcode}: {why}")
                 continue
