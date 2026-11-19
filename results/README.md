@@ -39,18 +39,18 @@ Table 2- The ten most recent pipeline runs
 
 ## 3. Data quality
 
-The validation rules held back 1,039 rows in quarantine (a holding area for figures that fail a check, so they never reach the dashboard). Table 3 shows which rule stopped them. Rows that passed but looked unusual were loaded with a warning flag instead (Table 4).
+432 items are waiting for review in quarantine (a holding area for anything that fails a check, so it never reaches the dashboard). 134 of them are whole reports that could not be read with confidence, and 298 are single figures that broke a validation rule. Table 3 shows which rule stopped them. When a report is read again, its earlier entries are closed and only the new result is kept, so each item is counted once (607 earlier entries have been closed this way or because the report was later read successfully). Figures that passed but looked unusual were loaded with a warning flag instead (Table 4).
 
 Table 3- Rows held back, by rule
 
 | Rule | Rows held back | Example reason |
 |---|---|---|
-| R09_LOCATION | 512 | location 'Abia ▼ 4 1' not in the HDX reference list |
-| parse | 398 | parse failure: could not read the epidemiological week/year from the title page ('Nigeria Centre for Disease Control') |
-| R02_NON_NEGATIVE | 90 | cum_confirmed fell from 10 to 2.0; weekly confirmed would be -8 |
-| R04_DEATHS_LE_CASES | 32 | cum_deaths (2) > cum_confirmed (1) |
-| R03_CONFIRMED_LE_SUSP | 5 | confirmed (10) > suspected (3.0) |
-| R08_EPI_WEEK | 2 | printed dates 2020-12-27–2021-01-02 do not match ISO 2021-W52 (2021-12-27–2022-01-02) |
+| R09_LOCATION | 256 | location 'Abia ▼ 4 1' not in the HDX reference list |
+| parse | 134 | parse failure: could not read the epidemiological week/year from the title page ('Nigeria Centre for Disease Control') |
+| R04_DEATHS_LE_CASES | 30 | cum_deaths (2) > cum_confirmed (1) |
+| R02_NON_NEGATIVE | 10 | cum_confirmed is not a whole number: '5990 867 37' |
+| R03_CONFIRMED_LE_SUSP | 1 | confirmed (10) > suspected (5) |
+| R08_EPI_WEEK | 1 | printed dates 2020-12-27–2021-01-02 do not match ISO 2021-W52 (2021-12-27–2022-01-02) |
 
 
 Table 4- Warnings on loaded rows
@@ -185,13 +185,13 @@ Table 9- Diseases without a forecast
 
 The forecasting results can be reproduced. Every method that uses randomness (Random Forest, Gradient Boosting and XGBoost) uses a fixed random seed (42), and the weekly figures the models were trained on are saved with this page in [`results/data`](data). The settings and the code version are saved in [`settings.json`](data/settings.json). Because NCDC revises its figures and the database is updated every week, a re-run on the live database can differ, but a re-run on the saved snapshot should give the same numbers.
 
-When this page was built, I re-ran the full comparison from the snapshot without the database (`scripts/reproduce_results.py`) and compared the two accuracy tables (Table 10). The re-run used this processor: AMD EPYC 9V74 80-Core Processor.
+When this page was built, I re-ran the full comparison from the snapshot without the database (`scripts/reproduce_results.py`) and compared the two accuracy tables (Table 10). The re-run used this processor: AMD EPYC 7763 64-Core Processor.
 
 Table 10- Reproducibility check
 
 | Disease | Numbers identical | Largest MASE difference | Same ranking of methods | Same test results |
 |---|---|---|---|---|
-| Lassa fever | yes | 0.00% | yes | yes |
+| Lassa fever | no | 0.25% | yes | yes |
 
 
 Upon further testing, I re-ran the comparison on nine machines with six different processor models. On five of them (Intel Xeon Platinum 8370C and 8573C, Intel Xeon 6975P, and AMD EPYC 9V45 and 9V74) every number was identical. On the sixth (AMD EPYC 7763), Random Forest and Gradient Boosting gave slightly different numbers, because tiny rounding differences in the calculations can change where a decision tree splits. This changed MASE by at most 0.25% and did not change the ranking of the methods or the result of any Diebold-Mariano test. This means the conclusions can be reproduced on any machine, and the exact numbers on most processors.
