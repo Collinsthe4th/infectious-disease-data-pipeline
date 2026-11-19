@@ -150,6 +150,17 @@ def match_state(raw: str, alias_map: Mapping[str, str]) -> str | None:
 #  Reader
 # --------------------------------------------------------------------------- #
 
+def _without_rules(cell: np.ndarray) -> np.ndarray:
+    """Blank out table rules (long horizontal or vertical lines) that fall inside a cell crop."""
+    cell = cell.copy()
+    dark = cell < 150
+    if dark.size == 0:
+        return cell
+    cell[dark.mean(axis=1) > 0.6, :] = 255
+    cell[:, dark.mean(axis=0) > 0.6] = 255
+    return cell
+
+
 def _treatments(cell, scale: float):
     from PIL import ImageOps
 
@@ -283,7 +294,7 @@ def read_table_image(image, alias_map: Mapping[str, str], national_cum_confirmed
             if col == "trend":
                 continue
             x0, x1 = int(edges[ci] + 3 * scale), int(edges[ci + 1] - 1 * scale)
-            cell = gray[y0:y1, x0:x1]
+            cell = _without_rules(gray[y0:y1, x0:x1])
             if (cell < 150).sum() < 8 * scale * scale:
                 row[col] = 0
                 continue
