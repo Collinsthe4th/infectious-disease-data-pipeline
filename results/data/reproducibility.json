@@ -1,6 +1,18 @@
 {
   "as_of": "2026-11-19",
-  "code_version": "c5fd1c31adc7",
-  "processor": "Intel(R) Xeon(R) 6975P-C",
-  "diseases": {}
+  "code_version": "87b5c4287894",
+  "processor": "AMD EPYC 9V45 96-Core Processor",
+  "diseases": {
+    "LASSA": {
+      "reproduced": true,
+      "identical": true,
+      "measure": "confirmed",
+      "rows_compared": 48,
+      "largest_relative_difference": 3.823041347914462e-15,
+      "largest_mase_difference": 1.9584737188742148e-15,
+      "same_ranking": true,
+      "same_test_decisions": true,
+      "weeks_used": 304
+    }
+  }
 }
