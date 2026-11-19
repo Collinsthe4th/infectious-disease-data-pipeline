@@ -232,7 +232,7 @@ def main() -> None:
          + ", ".join(f"{nm} as {c} cases" for nm, _, c in plotted)
          + ". Gaps are weeks with no published report, not weeks with zero cases.", "",
          "![Weekly cases](figures/01_weekly_cases_all_diseases.png)", "",
-         "Fig. 1- Weekly national cases by disease. Source: the researcher, from NCDC situation reports.", ""])
+         "Fig. 1- Weekly national cases by disease. Source: Collins C. Akagha (2026), using NCDC situation reports.", ""])
     ls = stl[stl["disease_code"] == "LASSA"].copy()
     if not ls.empty:
         ls["week_start"] = pd.to_datetime(ls["week_start"])
@@ -253,7 +253,7 @@ def main() -> None:
              f"{pd.Timestamp(2000, int(peak), 1):%B}, which matches the dry-season peak that NCDC describes "
              "every year (Fig. 2).", "",
              "![Lassa STL](figures/02_lassa_stl.png)", "",
-             "Fig. 2- Lassa fever trend and seasonal pattern (STL). Source: the researcher.", ""])
+             "Fig. 2- Lassa fever trend and seasonal pattern (STL). Source: Collins C. Akagha (2026).", ""])
 
     # ------------------------------------------------------------------ 6 alerts
     if not alerts.empty:
@@ -273,7 +273,7 @@ def main() -> None:
              "SARIMA residual check on every series with more than two years of weekly data. Together they flagged "
              f"{n(int(alerts['alerts'].sum()))} weeks out of {n(int(alerts['weeks_checked'].sum()))} checks (Fig. 3).",
              "", "![Alerts](figures/03_alerts_by_disease.png)", "",
-             "Fig. 3- Weeks flagged by each alert method. Source: the researcher.", "",
+             "Fig. 3- Weeks flagged by each alert method. Source: Collins C. Akagha (2026).", "",
              "Table 6- Alert checks by disease and method", "", md_table(tbl), ""])
 
     # ------------------------------------------------------------------ 7 forecasting
@@ -383,14 +383,14 @@ def main() -> None:
              f"{beat_naive} of the {len(h1)} methods beat the seasonal naive benchmark one week ahead.", "",
              f"![MASE {name}](figures/{fig_no:02d}_{code.lower()}_mase.png)", "",
              f"Fig. {fig_no}- {name}: MASE by method and forecast horizon (the red line marks the seasonal naive "
-             "benchmark). Source: the researcher.", "",
+             "benchmark). Source: Collins C. Akagha (2026).", "",
              f"Table {tab_no}- {name}: MASE by method and weeks ahead", "", md_table(acc_tbl), "",
              dm_text, "",
              f"Table {tab_no + 1}- {name}: one-week-ahead accuracy and Diebold-Mariano test against SARIMA", "",
              md_table(dm_tbl), "",
              f"![Forecast {name}](figures/{fig_no + 1:02d}_{code.lower()}_forecast.png)", "",
              f"Fig. {fig_no + 1}- {name}: one-week-ahead backtest and the forecast for the next four weeks. "
-             "Source: the researcher.", ""])
+             "Source: Collins C. Akagha (2026).", ""])
         fig_no += 2
         tab_no += 2
         # data snapshot for scripts/reproduce_results.py

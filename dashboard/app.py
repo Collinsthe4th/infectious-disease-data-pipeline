@@ -228,9 +228,9 @@ with st.expander("How is this decided?"):
     st.markdown("""
 | Level | Rule |
 |---|---|
-| 🔴 **High chance** | Two or more alert checks fired in the last 2 weeks; **or** one fired and the next 4 weeks are forecast at 1.5 times the usual level for this time of year or more; **or** the forecast alone is at least double the usual level |
-| 🟠 **Moderate chance** | One alert check fired; **or** the forecast is at least 1.5 times the usual level; **or** this week is already 1.5 times the usual level |
-| 🟢 **Low chance** | None of the above |
+| **High chance** | Two or more alert checks fired in the last 2 weeks; **or** one fired and the next 4 weeks are forecast at 1.5 times the usual level for this time of year or more; **or** the forecast alone is at least double the usual level |
+| **Moderate chance** | One alert check fired; **or** the forecast is at least 1.5 times the usual level; **or** this week is already 1.5 times the usual level |
+| **Low chance** | None of the above |
 
 *Usual level* = the average for the same weeks of the year in earlier years. The alert checks are described on the
 **Outbreak alerts** page.

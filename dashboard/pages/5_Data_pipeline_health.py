@@ -15,16 +15,20 @@ if runs.empty:
     st.info("No pipeline runs recorded yet.")
     st.stop()
 
-scheduled = runs[runs["run_type"] != "backfill"]
-finished = scheduled[scheduled["status"] != "running"]
-ok = (finished["status"] == "success").mean() * 100 if len(finished) else float("nan")
+finished = runs[runs["status"] != "running"]
+completed = finished["status"].isin(["success", "partial"]).mean() * 100 if len(finished) else float("nan")
+fully = int((finished["status"] == "success").sum())
+partly = int((finished["status"] == "partial").sum())
+totals = data.health_totals()
 c1, c2, c3, c4 = st.columns(4)
-c1.metric("Runs that succeeded", f"{ok:.0f}%" if ok == ok else "–", help="Weekly and manual runs (not the one-off history load).")
-c2.metric("Last run", {"success": "✅ Success", "partial": "🟠 Partly", "failed": "❌ Failed", "running": "⏳ Running"}
+c1.metric("Runs that completed", f"{completed:.0f}%" if completed == completed else "–",
+          help=f"{fully} finished fully and {partly} partly (the run finished but at least one report could not be "
+               "read and was listed for review). A failed run is one that stopped.")
+c2.metric("Last run", {"success": "Success", "partial": "Partly", "failed": "Failed", "running": "Running"}
           .get(runs.iloc[0]["status"], runs.iloc[0]["status"]), help=str(runs.iloc[0]["started_at"]))
-c3.metric("Rows held back for review", f"{int(runs['rows_quarantined'].sum()):,}",
+c3.metric("Rows held back for review", f"{int(totals['held_back']):,}",
           help="Figures that broke a data rule (for example more deaths than cases) and were not loaded.")
-c4.metric("Figures NCDC later corrected", f"{int(runs['revisions_detected'].sum()):,}",
+c4.metric("Figures NCDC later corrected", f"{int(totals['revisions']):,}",
           help="Times a later report changed a number that had already been published.")
 
 st.subheader("Recent runs")

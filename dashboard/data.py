@@ -197,7 +197,19 @@ def runs(limit: int = 50) -> pd.DataFrame:
                   EXTRACT(EPOCH FROM (ended_at - started_at))::int AS duration_s,
                   files_discovered, files_new, files_skipped_duplicate, files_manual_queue,
                   rows_extracted, rows_passed, rows_warned, rows_quarantined, revisions_detected, error_message
-             FROM ops.pipeline_run_log ORDER BY started_at DESC LIMIT :n""", n=limit)
+             FROM ops.pipeline_run_log
+            WHERE COALESCE(error_message, '') NOT LIKE '%synthetic demo run%'  -- removed demo data
+            ORDER BY started_at DESC LIMIT :n""", n=limit)
+
+
+@st.cache_data(ttl=TTL)
+def health_totals() -> dict:
+    """Current totals (not sums over runs, which would still count data removed since)."""
+    df = query("""SELECT (SELECT count(*) FROM ops.quarantine) AS held_back,
+                         (SELECT count(*) FROM curated.revision_history h
+                            JOIN curated.dim_source_report r ON r.report_id = h.new_report_id
+                           WHERE NOT r.is_synthetic) AS revisions""")
+    return df.iloc[0].to_dict()
 
 
 @st.cache_data(ttl=TTL)
