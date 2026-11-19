@@ -76,7 +76,7 @@ jobs:
           main = bag.dags["ncdc_disease_pipeline"]  # in memory, no Airflow database needed
           order = [t.task_id for t in main.topological_sort()] if hasattr(main, "topological_sort") else sorted(main.task_ids)
           print(order)
-          assert {"ncdc_disease_pipeline", "load_demo_data", "ncdc_backfill_2021_2026"} <= set(bag.dag_ids)
+          assert {"ncdc_disease_pipeline", "ncdc_backfill_2021_2026"} <= set(bag.dag_ids)
           assert len(main.task_ids) == 6
           PY
 

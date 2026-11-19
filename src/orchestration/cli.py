@@ -88,6 +88,16 @@ def cmd_demo(args, settings) -> int:
     from src.orchestration.pipeline import init_database, run_pipeline
 
     init_database(settings)
+    from sqlalchemy import text
+
+    from src.storage.db import get_engine
+
+    with get_engine(settings.database_url).connect() as conn:
+        real = conn.execute(text("SELECT count(*) FROM curated.dim_source_report WHERE NOT is_synthetic")).scalar_one()
+    if real and not args.allow_with_real_data:
+        print(f"Refusing to load demo data: this database already holds {real} real NCDC reports, and synthetic "
+              "figures would mix with them. Use an empty database for the demo.")
+        return 1
     files = write_demo_files(settings.inbox_dir, seed=settings.random_seed)
     print(f"Wrote {len(files)} SYNTHETIC files to {settings.inbox_dir}; loading them through the pipeline...")
     run_id, status = run_pipeline(settings, mode="manual", crawl=False, forecast=not args.no_forecast,
@@ -236,6 +246,38 @@ def cmd_finish_run(args, settings) -> int:
     return 0 if status != "failed" else 1
 
 
+def cmd_purge_synthetic(args, settings) -> int:
+    """Remove the synthetic demo data, keep the real NCDC data."""
+    from pathlib import Path
+
+    from sqlalchemy import text
+
+    from src.storage.db import get_engine
+
+    sql = (Path(__file__).resolve().parents[1] / "storage" / "purge_synthetic.sql").read_text(encoding="utf-8")
+    engine = get_engine(settings.database_url)
+    with engine.connect() as conn:
+        reports, files, reread = conn.execute(text(
+            """SELECT (SELECT count(*) FROM curated.dim_source_report WHERE is_synthetic),
+                      (SELECT count(*) FROM raw.documents WHERE is_synthetic),
+                      (SELECT count(DISTINCT r.document_id) FROM curated.revision_history h
+                         JOIN curated.dim_source_report r ON r.report_id = h.old_report_id
+                         JOIN curated.dim_source_report n ON n.report_id = h.new_report_id
+                        WHERE n.is_synthetic AND NOT r.is_synthetic)""")).one()
+    raw = engine.raw_connection()
+    try:
+        raw.autocommit = True  # the script has its own BEGIN ... COMMIT
+        with raw.cursor() as cur:
+            cur.execute(sql)
+    finally:
+        raw.close()
+    with engine.connect() as conn:
+        left = conn.execute(text("SELECT count(*) FROM curated.dim_source_report WHERE is_synthetic")).scalar_one()
+    print(f"Removed {reports} synthetic reports and {files} synthetic files; "
+          f"{reread} real files will be read again. Synthetic reports left: {left}.")
+    return 0 if left == 0 else 1
+
+
 def cmd_reset_db(args, settings) -> int:
     """Delete EVERYTHING (all five schemas) and recreate empty tables. Used to switch from demo to real data."""
     if not args.yes:
@@ -319,6 +361,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     d = sub.add_parser("demo")
     d.add_argument("--no-forecast", action="store_true", help="skip the slow rolling-origin forecast evaluation")
+    d.add_argument("--allow-with-real-data", action="store_true", help=argparse.SUPPRESS)
     d.set_defaults(func=cmd_demo)
 
     c = sub.add_parser("parse-check")
@@ -348,6 +391,8 @@ def build_parser() -> argparse.ArgumentParser:
     fr = sub.add_parser("finish-run", help="close a run started with start-run")
     fr.add_argument("--run-id", required=True)
     fr.set_defaults(func=cmd_finish_run)
+
+    sub.add_parser("purge-synthetic", help="remove synthetic demo data, keep real data").set_defaults(func=cmd_purge_synthetic)
 
     rd = sub.add_parser("reset-db", help="DELETE all data and recreate empty tables")
     rd.add_argument("--yes", action="store_true")

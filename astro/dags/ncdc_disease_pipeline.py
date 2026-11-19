@@ -74,20 +74,6 @@ with DAG(
 
 
 with DAG(
-    dag_id="load_demo_data",
-    description="Manual: load the SYNTHETIC demo dataset through the pipeline (for showing the system)",
-    schedule=None,
-    start_date=datetime(2026, 1, 1),
-    catchup=False,
-    default_args={"owner": "thesis", "retries": 0},
-    doc_md="Loads the **synthetic** demo dataset (never real NCDC data) through every step. "
-           "Trigger it by hand once to fill an empty database for a demonstration.",
-    tags=["thesis", "demo"],
-):
-    box("load_demo", f"{PIPELINE} demo", execution_timeout=timedelta(hours=1))
-
-
-with DAG(
     dag_id="ncdc_backfill_2021_2026",
     description="Manual, one-off: load the 2021-2026 history with the same steps",
     schedule=None,

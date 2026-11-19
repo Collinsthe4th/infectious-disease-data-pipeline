@@ -19,7 +19,8 @@ on:
           - real-trial               # 3 newest real NCDC reports per disease
           - real-backfill            # full 2021-2026 history (several hours; safe to re-run, it resumes)
           - analytics-only           # recompute trends, alerts and forecasts
-          - demo                     # synthetic data, every feature
+          - remove-synthetic-data    # delete demo data, keep real data (safe while another load runs)
+          - demo                     # synthetic data, every feature (refuses if real data is present)
           - RESET-then-real-trial    # DELETES everything, then a real trial
           - RESET-then-real-backfill # DELETES everything, then the full real history
       confirm:
@@ -30,7 +31,9 @@ jobs:
   load:
     runs-on: ubuntu-latest
     timeout-minutes: 350
-    concurrency: { group: database-load, cancel-in-progress: false }
+    concurrency:
+      group: ${{ github.event.inputs.what == 'remove-synthetic-data' && 'database-cleanup' || 'database-load' }}
+      cancel-in-progress: false
     env:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
     steps:
@@ -60,6 +63,7 @@ jobs:
             real-weekly)    python -m src.orchestration.cli --plain-logs run ;;
             real-backfill)  python -m src.orchestration.cli --plain-logs backfill ;;
             analytics-only) python -m src.orchestration.cli --plain-logs analytics ;;
+            remove-synthetic-data) python -m src.orchestration.cli --plain-logs purge-synthetic ;;
           esac
       - name: Summary
         if: always()

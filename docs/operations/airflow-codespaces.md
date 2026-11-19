@@ -14,7 +14,7 @@ Real Apache Airflow 3.3, the same version as on Astronomer, running on a free Gi
 2. Wait ~5 minutes the first time (it installs Airflow and the pipeline; later starts take about a minute).
 3. Open the **Ports** tab at the bottom → click the globe icon next to **8080 (Airflow)**.
 
-You will see three DAGs. Turn on `ncdc_disease_pipeline` and press ▶ to run it now; click the run to watch the six boxes turn green, and click any box → **Logs** to see what it did.
+You will see two DAGs: the weekly `ncdc_disease_pipeline` and the one-off `ncdc_backfill_2021_2026`. Turn on `ncdc_disease_pipeline` and press ▶ to run it now; click the run to watch the six boxes turn green, and click any box → **Logs** to see what it did.
 
 If Airflow did not start, in the Codespace terminal run: `bash scripts/airflow_local/start.sh`
 
