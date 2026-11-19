@@ -8,6 +8,6 @@ if [ -z "${DATABASE_URL:-}" ]; then
   echo "give this repository access, then rebuild the Codespace."; exit 1
 fi
 [ -d "$REPO/.venv-airflow" ] || bash "$REPO/scripts/airflow_local/setup.sh"
-airflow db migrate >/dev/null
+airflow db migrate | tail -3
 echo "Airflow is starting: open the 'Ports' tab and click the globe next to port 8080."
 exec airflow standalone

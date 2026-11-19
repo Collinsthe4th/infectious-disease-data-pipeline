@@ -33,7 +33,7 @@ jobs:
       - name: Run the weekly DAG once in Airflow
         run: |
           . scripts/airflow_local/env.sh
-          airflow db migrate > /dev/null
+          airflow db migrate 2>&1 | tail -25
           airflow dags list | grep -E "ncdc_disease_pipeline|load_demo_data|ncdc_backfill"
           airflow dags test ncdc_disease_pipeline 2026-11-16 2>&1 | tee dag_test.log | grep -E "Marking task|state=|success|failed" | tail -20 || true
       - name: Check the run in the pipeline's own run log
