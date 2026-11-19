@@ -36,25 +36,79 @@ if weekly.empty:
     st.info("No data has been loaded yet.")
     st.stop()
 
-# ----------------------------------------------------------------------------- latest week, every disease
-st.subheader("Latest reported week, all of Nigeria")
-cols = st.columns(4)
-for i, (disease, group) in enumerate(weekly.groupby("disease_name", sort=True)):
+# ----------------------------------------------------------------------------- this week's reports
+def sparkline(values: list[float], colour: str, width: int = 120, height: int = 34) -> str:
+    """A tiny inline SVG line chart."""
+    if len(values) < 2:
+        return ""
+    lo, hi = min(values), max(values)
+    span = (hi - lo) or 1
+    step = width / (len(values) - 1)
+    pts = " ".join(f"{i * step:.1f},{height - 3 - (v - lo) / span * (height - 6):.1f}" for i, v in enumerate(values))
+    last_x, last_y = pts.split(" ")[-1].split(",")
+    return (f'<svg width="{width}" height="{height}" viewBox="0 0 {width} {height}">'
+            f'<polyline fill="none" stroke="{colour}" stroke-width="2" points="{pts}"/>'
+            f'<circle cx="{last_x}" cy="{last_y}" r="3" fill="{colour}"/></svg>')
+
+
+CARD_CSS = """<style>
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px;margin:6px 0 10px}
+.card{border:1px solid rgba(128,128,128,.35);border-radius:14px;padding:14px 16px;background:rgba(128,128,128,.07)}
+.card .name{font-size:.95rem;font-weight:600}
+.card .row{display:flex;justify-content:space-between;align-items:flex-end;margin-top:4px}
+.card .num{font-size:2rem;font-weight:700;line-height:1.1}
+.card .what{font-size:.8rem;opacity:.75}
+.card .chg{font-size:.85rem;font-weight:600;margin-top:2px}
+.card .more{font-size:.78rem;opacity:.75;margin-top:6px}
+.up{color:#e5484d}.down{color:#30a46c}.flat{color:#8b8d98}
+</style>"""
+
+has_figure = weekly.dropna(subset=["suspected", "confirmed", "deaths"], how="all")
+current = has_figure["week_start"].max() if not has_figure.empty else weekly["week_start"].max()
+cw = weekly[weekly["week_start"] == current]
+ew, ey = int(cw["epi_week"].iloc[0]), int(cw["epi_year"].iloc[0])
+st.subheader(f"This week's reports — week {ew}, {ey}")
+st.caption(f"Week of {current:%d %b} – {current + pd.Timedelta(days=6):%d %b %Y}, the newest week NCDC has published "
+           "(reports come out a few weeks after the week they describe). Figures for all of Nigeria; "
+           "the line shows the last 12 reported weeks.")
+
+cards = []
+for disease, group in weekly[weekly["disease_name"].isin(cw["disease_name"])].groupby("disease_name", sort=True):
     col, _ = ui.best_series(group)
-    with cols[i % 4]:
-        if col is None:
-            st.metric(disease, "–", help="No figures published yet.")
-            continue
-        g = group.dropna(subset=[col]).sort_values("week_start")
-        now = g.iloc[-1]
-        prev = g.iloc[-2] if len(g) > 1 else None
-        delta = None
-        if prev is not None and not col.startswith("cum_") and (now["week_start"] - prev["week_start"]).days == 7:
-            delta = int(now[col] - prev[col])
-        st.metric(f"{disease} — {ui.label(col).lower()}", f"{int(now[col]):,}", delta=delta, delta_color="inverse",
-                  help=f"Week starting {now['week_start']:%d %b %Y}" + (" · may still change" if now["is_provisional"] else "")
-                  + (" · NCDC now publishes only running totals for this disease" if col.startswith("cum_") else ""))
-        st.caption(f"week of {now['week_start']:%d %b %Y}")
+    if col is None or col.startswith("cum_"):
+        continue
+    g = group.dropna(subset=[col]).sort_values("week_start")
+    if g.empty or g["week_start"].iloc[-1] != current:
+        continue
+    now = g.iloc[-1]
+    prev = g.iloc[-2] if len(g) > 1 and (now["week_start"] - g.iloc[-2]["week_start"]).days == 7 else None
+    if prev is None:
+        cls, chg = "flat", "no report the week before"
+    else:
+        d = int(now[col] - prev[col])
+        cls = "up" if d > 0 else "down" if d < 0 else "flat"
+        arrow = "▲" if d > 0 else "▼" if d < 0 else "■"
+        chg = f"{arrow} {abs(d):,} vs previous week" if d else "■ same as previous week"
+    colour = {"up": "#e5484d", "down": "#30a46c", "flat": "#8b8d98"}[cls]
+    others = " · ".join(f"{ui.label(c)} {int(now[c]):,}" for c in ("suspected", "confirmed", "deaths")
+                        if c != col and pd.notna(now.get(c)))
+    cards.append(
+        f'<div class="card"><div class="name">{disease}</div>'
+        f'<div class="row"><div><div class="num">{int(now[col]):,}</div><div class="what">{ui.label(col).lower()}</div>'
+        f'<div class="chg {cls}">{chg}</div></div>{sparkline(g[col].tail(12).astype(float).tolist(), colour)}</div>'
+        f'<div class="more">{others}{" · may still change" if now["is_provisional"] else ""}</div></div>')
+
+if cards:
+    st.markdown(CARD_CSS + '<div class="cards">' + "".join(cards) + "</div>", unsafe_allow_html=True)
+else:
+    st.info("No weekly figures were published for this week.")
+last_seen = (has_figure.groupby("disease_name")["week_start"].max().sort_values(ascending=False))
+quiet = [f"{d} ({w:%d %b %Y})" for d, w in last_seen.items() if w != current]
+no_weekly = sorted(set(weekly["disease_name"]) - set(last_seen.index))
+if quiet or no_weekly:
+    st.markdown("<span style='font-size:.85rem;opacity:.75'>Not reported this week — last weekly report: "
+                + ", ".join(quiet + [f"{d} (running totals only)" for d in no_weekly]) + "</span>",
+                unsafe_allow_html=True)
 
 # ----------------------------------------------------------------------------- outbreak chance, selected disease
 st.divider()
@@ -75,18 +129,26 @@ if run_id:
         forecast = live[live["model_name"] == best]
 
 chance = outbreak_chance(nat, alerts, forecast)
-STYLE = {HIGH_CHANCE: ("🔴", "#fdecea", "#b71c1c"), MODERATE_CHANCE: ("🟠", "#fff4e5", "#b45309"),
-         LOW_CHANCE: ("🟢", "#edf7ed", "#1b5e20"), NO_DATA: ("⚪", "#f2f2f2", "#555")}
-icon, bg, fg = STYLE[chance.level]
-why = "; ".join(chance.reasons)
+STYLE = {HIGH_CHANCE: ("🔴", "#e5484d"), MODERATE_CHANCE: ("🟠", "#f59e0b"),
+         LOW_CHANCE: ("🟢", "#30a46c"), NO_DATA: ("⚪", "#8b8d98")}
+icon, fg = STYLE[chance.level]
+items = "".join(f"<li>{r[0].upper() + r[1:]}</li>" for r in chance.reasons)
+fc_line = ""
+if chance.forecast_mean is not None:
+    usual = f" (usual for this time of year: about {chance.forecast_usual:.0f})" if chance.forecast_usual else ""
+    fc_line = (f'<div style="margin-top:8px;font-size:.9rem"><b>Next 4 weeks:</b> about {chance.forecast_mean:.0f} '
+               f"confirmed cases a week{usual}</div>")
 st.markdown(
-    f"""<div style="background:{bg};border-left:8px solid {fg};border-radius:8px;padding:14px 18px;margin:6px 0 4px">
-    <div style="font-size:0.9rem;color:#444">Chance of an outbreak — {name}</div>
-    <div style="font-size:1.8rem;font-weight:700;color:{fg}">{icon} {chance.level}</div>
-    <div style="font-size:0.95rem;margin-top:4px">{why[0].upper() + why[1:]}.</div></div>""",
+    f"""<div style="border:1px solid {fg};border-left:8px solid {fg};border-radius:14px;padding:12px 16px;
+    background:{fg}1a;margin:6px 0 4px">
+    <div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap">
+      <span style="font-size:1.5rem;font-weight:700;color:{fg}">{icon} {chance.level + (" of an outbreak" if chance.level != NO_DATA else "")}</span>
+      <span style="font-size:.9rem;opacity:.8">{name}</span></div>
+    {fc_line}
+    <ul style="margin:6px 0 0 0;padding-left:18px;font-size:.88rem">{items}</ul></div>""",
     unsafe_allow_html=True)
-st.caption(("Forecast included. " if forecast is not None else "No forecast for this disease (forecasts are made for "
-            "Lassa fever), so this uses the alert checks and recent weeks only. ")
+st.caption(("" if forecast is not None else "No forecast for this disease (forecasts are made for Lassa fever), "
+            "so this uses the alert checks and recent weeks only. ")
            + "A research indicator to show where to look first — not an official NCDC alert.")
 with st.expander("How is this decided?"):
     st.markdown("""

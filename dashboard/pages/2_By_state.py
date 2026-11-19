@@ -7,6 +7,7 @@ from pathlib import Path
 
 import pandas as pd
 import plotly.express as px
+import plotly.graph_objects as go
 import streamlit as st
 
 import data
@@ -26,6 +27,7 @@ if states.empty:
 # ----------------------------------------------------------------------------- choose period
 years = sorted(states["epi_year"].unique(), reverse=True)
 year = st.sidebar.selectbox("Year", years, index=0)
+states_box = st.sidebar.container()  # the state picker is filled in below, once the ranking is known
 measure = st.sidebar.radio("Cases", ["cum_confirmed", "cum_suspected", "cum_deaths"],
                            format_func=lambda c: {"cum_confirmed": "Confirmed", "cum_suspected": "Suspected",
                                                   "cum_deaths": "Deaths"}[c])
@@ -54,16 +56,25 @@ else:
     shown = every.merge(latest, on="pcode", how="left")
     shown["Cases"] = shown[measure]
     shown["Per 100,000"] = shown["per_100k"].round(2)
-    fig = px.choropleth(shown, geojson=geo, locations="pcode", featureidkey="properties.pcode",
-                        color="per_100k", color_continuous_scale="OrRd", range_color=(0, shown["per_100k"].max()),
-                        hover_name="State", hover_data={"pcode": False, "per_100k": False, "Cases": ":,",
-                                                         "Per 100,000": True},
-                        labels={"per_100k": "Per 100,000"})
-    fig.update_geos(fitbounds="locations", visible=False)
-    fig.update_traces(marker_line_color="#888", marker_line_width=0.5)
-    fig.update_layout(height=560, margin={"l": 0, "r": 0, "t": 0, "b": 0})
+    # Every state drawn first in light grey, so the whole country is always visible ...
+    fig = go.Figure(go.Choropleth(
+        geojson=geo, locations=every["pcode"], featureidkey="properties.pcode", z=[0] * len(every),
+        colorscale=[[0, "#d9d9d9"], [1, "#d9d9d9"]], showscale=False, text=every["State"],
+        hovertemplate="%{text}<br>No cases listed<extra></extra>",
+        marker={"line": {"color": "#7a7a7a", "width": 0.8}}))
+    # ... then the states with figures, shaded by cases per 100,000 people.
+    have = shown.dropna(subset=["per_100k"])
+    fig.add_trace(go.Choropleth(
+        geojson=geo, locations=have["pcode"], featureidkey="properties.pcode", z=have["per_100k"],
+        colorscale="OrRd", zmin=0, zmax=max(float(have["per_100k"].max()), 0.01) if not have.empty else 1,
+        customdata=have[["State", "Cases"]], marker={"line": {"color": "#7a7a7a", "width": 0.8}},
+        hovertemplate="<b>%{customdata[0]}</b><br>%{customdata[1]:,} cases<br>%{z:.2f} per 100,000<extra></extra>",
+        colorbar={"title": "Per 100,000", "thickness": 14}))
+    fig.update_geos(fitbounds="locations", visible=False, bgcolor="rgba(0,0,0,0)")
+    fig.update_layout(height=560, margin={"l": 0, "r": 0, "t": 0, "b": 0}, paper_bgcolor="rgba(0,0,0,0)",
+                      geo={"bgcolor": "rgba(0,0,0,0)"})
     st.plotly_chart(fig, use_container_width=True)
-    st.caption("Darker = more cases for the size of the population. Grey = NCDC listed no cases for that state. "
+    st.caption("Darker = more cases for the size of the population. Grey = no cases listed for that state in the report. "
                "Population: 2022 estimates (HDX / National Population Commission). Map: geoBoundaries (CC BY 4.0).")
 
 # ----------------------------------------------------------------------------- ranking
@@ -87,7 +98,8 @@ st.subheader("Week by week")
 weekly_col = {"cum_confirmed": "confirmed", "cum_suspected": "suspected", "cum_deaths": "deaths"}[measure]
 top = ranked["pcode"].head(5).tolist()
 names = dict(zip(states["pcode"], states["location_name"]))
-pick = st.multiselect("States", sorted(names, key=names.get), default=top, format_func=names.get)
+pick = states_box.multiselect("States for the weekly chart", sorted(names, key=names.get), default=top,
+                            format_func=names.get, help="Starts with the 5 states with the highest rates.")
 series = yr[yr["pcode"].isin(pick)].dropna(subset=[weekly_col])
 if series.empty:
     st.caption("No weekly figures for the chosen states this year.")

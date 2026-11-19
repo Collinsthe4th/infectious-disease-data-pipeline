@@ -80,3 +80,15 @@ def test_outbreak_chance_uses_forecast():
     one = alerts([(w.week_start.iloc[-1], "EARS_C1", True)])
     assert outbreak_chance(w, one, rising, today=TODAY).level == HIGH_CHANCE
     assert outbreak_chance(w, one, None, today=TODAY).level == MODERATE_CHANCE
+
+
+def test_forecast_compared_with_same_measure():
+    """Lassa: suspected cases dominate, but forecasts are of confirmed cases (bug seen on 19 Nov 2026)."""
+    from src.analytics.severity import outbreak_chance
+
+    w = weekly([10] * 156)
+    w["suspected"] = 150.0
+    next_weeks = pd.date_range(start=w.week_start.iloc[-1] + pd.Timedelta(weeks=1), periods=4, freq="W-MON")
+    calm = pd.DataFrame({"target_week": next_weeks, "predicted": [10] * 4})
+    chance = outbreak_chance(w, alerts([]), calm, today=TODAY)
+    assert chance.forecast_vs_usual is not None and abs(chance.forecast_vs_usual - 1.0) < 0.01

@@ -150,6 +150,8 @@ class OutbreakChance:
     reasons: tuple[str, ...]
     forecast_vs_usual: float | None
     base: Severity
+    forecast_mean: float | None = None  # average forecast per week (forecast measure)
+    forecast_usual: float | None = None  # usual level for those weeks in earlier years
 
 
 def usual_level(series: pd.Series, weeks: pd.DatetimeIndex) -> float | None:
@@ -168,7 +170,7 @@ def usual_level(series: pd.Series, weeks: pd.DatetimeIndex) -> float | None:
 
 
 def outbreak_chance(weekly: pd.DataFrame, alerts: pd.DataFrame, forecast: pd.DataFrame | None = None,
-                    *, today: date | None = None) -> OutbreakChance:
+                    *, today: date | None = None, forecast_measure: str = "confirmed") -> OutbreakChance:
     """Combine this week's alert checks with the 4-week forecast.
 
     HIGH     2+ alert checks fired in the last 2 weeks; or 1 fired and the next
@@ -177,20 +179,24 @@ def outbreak_chance(weekly: pd.DataFrame, alerts: pd.DataFrame, forecast: pd.Dat
     MODERATE 1 alert check fired; or the forecast is >= 1.5 x usual; or this
              week is already >= 1.5 x usual
     LOW      none of the above
-    ``forecast``: columns target_week, predicted (one model, next weeks).
+    ``forecast``: columns target_week, predicted (one model, next weeks), predicting
+    ``forecast_measure`` (Lassa forecasts are of confirmed cases). The usual level is
+    always taken from that same measure, so like is compared with like.
     """
     base = classify(weekly, alerts, today=today)
     if base.level == NO_DATA:
-        return OutbreakChance(NO_DATA, (base.reason,), None, base)
+        return OutbreakChance(NO_DATA, (base.reason,), None, base, None, None)
 
-    ratio = None
-    if forecast is not None and not forecast.empty:
-        s = (weekly.assign(week_start=pd.to_datetime(weekly["week_start"])).set_index("week_start")[base.measure]
+    ratio = forecast_mean = forecast_usual = None
+    if forecast is not None and not forecast.empty and forecast_measure in weekly:
+        s = (weekly.assign(week_start=pd.to_datetime(weekly["week_start"])).set_index("week_start")[forecast_measure]
              .astype(float).dropna().sort_index())
         targets = pd.DatetimeIndex(pd.to_datetime(forecast["target_week"]))
         usual = usual_level(s, targets)
+        forecast_mean = float(forecast["predicted"].astype(float).mean())
         if usual and usual > 0:
-            ratio = float(forecast["predicted"].astype(float).mean()) / usual
+            forecast_usual = usual
+            ratio = forecast_mean / usual
 
     n_alerts = len(base.alerts_fired)
     reasons: list[str] = []
@@ -198,7 +204,8 @@ def outbreak_chance(weekly: pd.DataFrame, alerts: pd.DataFrame, forecast: pd.Dat
         reasons.append(f"{n_alerts} alert check{'s' if n_alerts > 1 else ''} fired in the last 2 weeks ("
                        + "; ".join(METHOD_LABELS.get(m, m) for m in base.alerts_fired) + ")")
     if ratio is not None:
-        reasons.append(f"the next 4 weeks are forecast at {ratio:.1f} times the usual level for this time of year")
+        reasons.append(f"forecast for the next 4 weeks: about {forecast_mean:.0f} {forecast_measure} cases a week, "
+                       f"{ratio:.1f} times the usual {forecast_usual:.0f} for this time of year")
     if base.vs_usual_ratio is not None and base.vs_usual_ratio >= 1.5:
         reasons.append(f"this week is {base.vs_usual_ratio:.1f} times the usual level")
     if base.change_vs_4wk_pct is not None and abs(base.change_vs_4wk_pct) >= 25:
@@ -214,4 +221,4 @@ def outbreak_chance(weekly: pd.DataFrame, alerts: pd.DataFrame, forecast: pd.Dat
         level = LOW_CHANCE
     if not reasons:
         reasons.append("no alert checks fired and cases are within the usual range")
-    return OutbreakChance(level, tuple(reasons), ratio, base)
+    return OutbreakChance(level, tuple(reasons), ratio, base, forecast_mean, forecast_usual)
