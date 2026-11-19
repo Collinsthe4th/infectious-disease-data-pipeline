@@ -39,6 +39,9 @@ def alias_map() -> dict[str, str]:
 
 def main() -> None:
     n = int(sys.argv[1]) if len(sys.argv) > 1 else 12
+    dump = Path(sys.argv[2]) if len(sys.argv) > 2 else None  # save page images/text of failures here
+    if dump:
+        dump.mkdir(parents=True, exist_ok=True)
     s = get_settings()
     crawler = NcdcCrawler(PoliteSession(user_agent=s.user_agent, delay_s=3, max_retries=1, backoff_base_s=5),
                           s.ncdc_base_url, Path("/tmp/raw"))
@@ -66,6 +69,19 @@ def main() -> None:
         if ok:
             st = states.assign(cc=states["cum_confirmed"].astype(int)).sort_values("cc", ascending=False).head(3)
             top = ", ".join(f"{r.location_raw} {r.cc}" for r in st.itertuples())
+        if dump and not ok:
+            import pdfplumber
+
+            from src.extraction.state_table_ocr import DPI, find_table_page
+            stem = f"{ex.epi_year}_W{ex.epi_week:02d}"
+            pno = find_table_page(f.path)
+            with pdfplumber.open(f.path) as pdf:
+                (dump / f"{stem}_pages.txt").write_text("\n\n".join(
+                    f"=== page {i} ===\n{(p.extract_text() or '')[:600]}" for i, p in enumerate(pdf.pages, 1)),
+                    encoding="utf-8")
+                for i, p in enumerate(pdf.pages, 1):
+                    if i == pno or (pno is None and "table 3" in (p.extract_text() or "").lower()):
+                        p.to_image(resolution=DPI).save(dump / f"{stem}_p{i}.png")
         lines.append(f"| {ex.epi_year} W{ex.epi_week:02d} (national confirmed {nat_cc}) | "
                      f"{'used' if ok else 'not used'} | {len(states)} | {top or note} ({time.time() - t0:.0f}s) |")
         print(lines[-1], flush=True)

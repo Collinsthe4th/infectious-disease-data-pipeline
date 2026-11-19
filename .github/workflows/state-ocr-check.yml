@@ -8,8 +8,15 @@ on:
       reports:
         description: "How many reports to check"
         default: "12"
+      dump:
+        description: "Save failing pages to the 'ocr-debug' branch"
+        type: boolean
+        default: false
   push:
     paths: ["src/extraction/state_table_ocr.py", "scripts/check_state_ocr.py"]
+
+permissions:
+  contents: write
 
 jobs:
   check:
@@ -21,4 +28,13 @@ jobs:
         with: { python-version: "3.11", cache: pip }
       - run: sudo apt-get install -y -qq tesseract-ocr > /dev/null
       - run: pip install -r requirements.txt
-      - run: python scripts/check_state_ocr.py ${{ github.event.inputs.reports || '12' }}
+      - run: python scripts/check_state_ocr.py ${{ github.event.inputs.reports || '12' }} ${{ github.event.inputs.dump == 'true' && 'ocr-debug' || '' }}
+      - name: Save failing pages to the 'ocr-debug' branch
+        if: github.event.inputs.dump == 'true'
+        run: |
+          git config user.name "Akagha Collins Chisom"
+          git config user.email "173009974+Collinsthe4th@users.noreply.github.com"
+          git checkout -b ocr-debug
+          git add -f ocr-debug
+          git commit -qm "OCR debug pages"
+          git push -f origin ocr-debug
