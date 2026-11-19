@@ -1,4 +1,4 @@
-"""Lassa fever forecasts 1-4 weeks ahead and the model comparison (RQ4)."""
+"""Lassa fever forecasts for the next four weeks, and how accurate each method has been (RQ4)."""
 
 from __future__ import annotations
 
@@ -9,17 +9,23 @@ import streamlit as st
 import data
 import ui
 
-ui.page("Forecasts", "🔮")
+ui.page("Forecasts", "🔮", "Expected Lassa fever cases for the next four weeks, and which forecasting method has "
+        "been most accurate so far. Forecasts are research estimates, not official projections.")
 run_id = data.latest_forecast_run()
 if not run_id:
-    st.info("No forecasts yet. They are produced by the analytics step (`pipeline analytics`).")
+    st.info("Forecasts appear here once there are at least two years of weekly Lassa fever figures. "
+            "They are recalculated after every weekly update.")
     st.stop()
 
 live = data.forecasts(run_id, backtest=False)
 backtest = data.forecasts(run_id, backtest=True)
 evaln = data.evaluation(run_id)
+if live.empty:
+    st.info("No forecast for the coming weeks in the latest run.")
+    st.stop()
+
 places = sorted(live["location_name"].unique())
-place = st.sidebar.selectbox("Location", places)
+place = st.sidebar.selectbox("Place", places) if len(places) > 1 else places[0]
 live = live[live["location_name"] == place]
 backtest = backtest[backtest["location_name"] == place]
 pcode = live["pcode"].iloc[0]
@@ -27,11 +33,11 @@ disease_name = live["disease_name"].iloc[0]
 
 models = sorted(live["model_name"].unique())
 best = None
-if not evaln.empty:
-    e = evaln[(evaln["pcode"] == pcode) & (evaln["horizon"] == 1)].drop_duplicates("model_name")
-    if not e.empty:
-        best = e.sort_values("mase").iloc[0]["model_name"]
-model = st.sidebar.selectbox("Model for the fan chart", models, index=models.index(best) if best in models else 0)
+e1 = evaln[(evaln["pcode"] == pcode) & (evaln["horizon"] == 1)].drop_duplicates("model_name") if not evaln.empty else evaln
+if not e1.empty:
+    best = e1.sort_values("mase").iloc[0]["model_name"]
+model = st.sidebar.selectbox("Forecasting method", models, index=models.index(best) if best in models else 0,
+                             format_func=lambda m: ui.MODEL_LABELS.get(m, m))
 
 disease_code = data.diseases().set_index("disease_name").loc[disease_name, "disease_code"]
 hist = data.weekly(disease_code, pcode)
@@ -39,46 +45,60 @@ hist = hist[hist["week_start"] >= hist["week_start"].max() - pd.Timedelta(weeks=
 m = live[live["model_name"] == model].sort_values("target_week")
 
 fig = go.Figure()
-fig.add_bar(x=hist["week_start"], y=hist["confirmed"], name="observed confirmed", marker_color=ui.COLOURS["observed"], opacity=0.7)
+fig.add_bar(x=hist["week_start"], y=hist["confirmed"], name="Confirmed cases (reported)",
+            marker_color=ui.COLOURS["observed"], opacity=0.7)
 if m["lower_95"].notna().any():
     fig.add_scatter(x=pd.concat([m["target_week"], m["target_week"][::-1]]),
                     y=pd.concat([m["upper_95"], m["lower_95"][::-1]]), fill="toself", fillcolor=ui.COLOURS["band"],
-                    line={"width": 0}, name="95% interval", hoverinfo="skip")
-if m["lower_80"].notna().any():
-    fig.add_scatter(x=pd.concat([m["target_week"], m["target_week"][::-1]]),
-                    y=pd.concat([m["upper_80"], m["lower_80"][::-1]]), fill="toself", fillcolor="rgba(230,126,34,0.32)",
-                    line={"width": 0}, name="80% interval", hoverinfo="skip")
-fig.add_scatter(x=m["target_week"], y=m["predicted"], name=f"{model} forecast", mode="lines+markers",
+                    line={"width": 0}, name="Likely range (95%)", hoverinfo="skip")
+fig.add_scatter(x=m["target_week"], y=m["predicted"], name="Forecast", mode="lines+markers",
                 line={"color": ui.COLOURS["forecast"], "width": 3})
-fig.update_layout(height=430, legend={"orientation": "h"}, yaxis_title="Confirmed cases per week")
-st.subheader(f"{disease_name}: next four weeks, {place}")
+fig.update_layout(height=430, legend={"orientation": "h"}, yaxis_title="Confirmed cases per week", xaxis_title="Week")
+st.subheader(f"{disease_name}: next four weeks — {place}")
 st.plotly_chart(fig, use_container_width=True)
 
-table = live.pivot_table(index="model_name", columns="horizon", values="predicted").round(1)
-table.columns = [f"h={c} ({live[live.horizon == c]['target_week'].iloc[0]:%d %b})" for c in table.columns]
-st.dataframe(table, use_container_width=True)
+cols = st.columns(len(m)) if len(m) else []
+for c, (_, r) in zip(cols, m.iterrows()):
+    rng = "" if pd.isna(r["lower_95"]) else f"likely {r['lower_95']:.0f}–{r['upper_95']:.0f}"
+    c.metric(f"Week of {r['target_week']:%d %b}", f"{r['predicted']:.0f} cases", help=rng or None)
+if best:
+    st.caption(f"Most accurate method so far for next-week forecasts: **{ui.MODEL_LABELS.get(best, best)}**.")
 
-st.subheader("Rolling-origin evaluation")
-st.caption("Every model forecast the same weeks from the same origins using only data available at the time. "
-           "MASE < 1 means better than the seasonal naive benchmark. DM = Diebold-Mariano test "
-           "(negative statistic: the model is more accurate than the reference).")
+st.subheader("How accurate has each method been?")
+st.caption("Each method was tested on past weeks using only the data that existed at the time. "
+           "The score compares its typical error with the simple 'same week last year' guess: "
+           "**below 1 means more accurate than that guess**, above 1 means less accurate.")
 if not evaln.empty:
-    e = evaln[evaln["pcode"] == pcode]
-    acc = e.drop_duplicates(["model_name", "horizon"]).pivot_table(index="model_name", columns="horizon", values="mase").round(3)
-    acc.columns = [f"MASE h={c}" for c in acc.columns]
-    st.dataframe(acc.sort_values(acc.columns[0]), use_container_width=True)
-    ref = st.radio("DM reference model", sorted(e["dm_reference_model"].dropna().unique()), horizontal=True)
-    dm = e[e["dm_reference_model"] == ref][["model_name", "horizon", "mae", "rmse", "mase", "dm_statistic", "dm_p_value"]]
-    st.dataframe(ui.rounded(dm, 3), use_container_width=True, hide_index=True)
+    e = evaln[evaln["pcode"] == pcode].drop_duplicates(["model_name", "horizon"])
+    acc = e.pivot_table(index="model_name", columns="horizon", values="mase").round(2)
+    acc.columns = [f"{c} week{'s' if c > 1 else ''} ahead" for c in acc.columns]
+    acc = acc.sort_values(acc.columns[0])
+    acc.index = [ui.MODEL_LABELS.get(i, i) for i in acc.index]
+    st.dataframe(acc, use_container_width=True)
+    with st.expander("Is the difference real? (statistical test)"):
+        refs = sorted(evaln["dm_reference_model"].dropna().unique())
+        if refs:
+            ref = st.radio("Compare against", refs, horizontal=True, format_func=lambda m: ui.MODEL_LABELS.get(m, m))
+            dm = evaln[(evaln["pcode"] == pcode) & (evaln["dm_reference_model"] == ref)].copy()
+            dm["Method"] = dm["model_name"].map(lambda x: ui.MODEL_LABELS.get(x, x))
+            dm["Weeks ahead"] = dm["horizon"]
+            dm["Average error (cases)"] = dm["mae"].round(1)
+            dm["Clearly different?"] = dm["dm_p_value"].map(
+                lambda p: "–" if pd.isna(p) else ("Yes" if p < 0.05 else "No"))
+            dm["p-value"] = dm["dm_p_value"].round(3)
+            st.dataframe(dm[["Method", "Weeks ahead", "Average error (cases)", "Clearly different?", "p-value"]],
+                         use_container_width=True, hide_index=True)
+            st.caption("Diebold–Mariano test. 'Yes' means the accuracy difference is unlikely to be luck (p < 0.05).")
 
 if not backtest.empty:
-    with st.expander("Backtest forecasts vs actual"):
-        h = st.select_slider("Horizon", options=sorted(backtest["horizon"].unique()))
+    with st.expander("Past forecasts compared with what actually happened"):
+        h = st.select_slider("Weeks ahead", options=sorted(backtest["horizon"].unique()))
         b = backtest[backtest["horizon"] == h]
         fig2 = go.Figure()
         actual = b.drop_duplicates("target_week")
-        fig2.add_scatter(x=actual["target_week"], y=actual["actual"], name="actual", line={"color": "black", "width": 3})
-        for name, g in b.groupby("model_name"):
-            fig2.add_scatter(x=g["target_week"], y=g["predicted"], name=name, mode="lines")
+        fig2.add_scatter(x=actual["target_week"], y=actual["actual"], name="What happened",
+                         line={"color": "black", "width": 3})
+        for nm, g in b.groupby("model_name"):
+            fig2.add_scatter(x=g["target_week"], y=g["predicted"], name=ui.MODEL_LABELS.get(nm, nm), mode="lines")
         fig2.update_layout(height=420, legend={"orientation": "h"})
         st.plotly_chart(fig2, use_container_width=True)

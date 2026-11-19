@@ -69,6 +69,28 @@ def national_latest() -> pd.DataFrame:
 
 
 @st.cache_data(ttl=TTL)
+def national_weekly_all() -> pd.DataFrame:
+    """National weekly rows for every disease (for the scorecard)."""
+    df = query("""SELECT disease_code, disease_name, week_start, epi_year, epi_week, suspected, confirmed, deaths,
+                         cum_suspected, cum_confirmed, cum_deaths, is_provisional
+                    FROM curated.v_weekly_cases WHERE admin_level = 0 ORDER BY disease_name, week_start""")
+    if not df.empty:
+        df["week_start"] = pd.to_datetime(df["week_start"])
+    return df
+
+
+@st.cache_data(ttl=TTL)
+def national_alerts(weeks: int = 12) -> pd.DataFrame:
+    df = query("""SELECT d.disease_code, w.week_start, a.method, a.is_alert, a.statistic, a.threshold
+                    FROM analytics.alert a JOIN curated.dim_disease d USING (disease_id)
+                    JOIN curated.dim_location l USING (location_id) JOIN curated.dim_epi_week w USING (week_id)
+                   WHERE l.pcode = 'NG' AND w.week_start >= CURRENT_DATE - (:n * 7)""", n=weeks)
+    if not df.empty:
+        df["week_start"] = pd.to_datetime(df["week_start"])
+    return df
+
+
+@st.cache_data(ttl=TTL)
 def has_synthetic() -> bool:
     return bool(query("SELECT EXISTS (SELECT 1 FROM curated.dim_source_report WHERE is_synthetic) AS s")["s"].iloc[0])
 
