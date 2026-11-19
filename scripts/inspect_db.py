@@ -14,6 +14,23 @@ from src.storage.db import get_engine  # noqa: E402
 pd.set_option("display.width", 200)
 pd.set_option("display.max_rows", 200)
 QUERIES = {
+    "Documents by disease and status": """
+        SELECT disease_hint, processing_status, count(*) AS files, max(listing_date) AS newest_listing
+          FROM raw.documents WHERE NOT is_synthetic GROUP BY 1, 2 ORDER BY 1, 2""",
+    "Weekly figures per disease and year (national)": """
+        SELECT disease_code, epi_year, count(*) AS weeks,
+               count(suspected) AS with_suspected, count(confirmed) AS with_confirmed
+          FROM curated.v_weekly_cases WHERE admin_level = 0 AND NOT is_synthetic
+         GROUP BY 1, 2 ORDER BY 1, 2""",
+    "Why non-Lassa files were not read (top reasons)": """
+        SELECT disease_hint, left(status_reason, 110) AS reason, count(*) AS files
+          FROM raw.documents WHERE NOT is_synthetic AND disease_hint <> 'LASSA'
+           AND processing_status IN ('parse_failed', 'manual_queue', 'ignored')
+         GROUP BY 1, 2 ORDER BY 3 DESC LIMIT 25""",
+    "Forecast/alert coverage by disease": """
+        SELECT d.disease_code, (SELECT count(*) FROM analytics.forecast f WHERE f.disease_id = d.disease_id) AS forecasts,
+               (SELECT count(*) FROM analytics.alert a WHERE a.disease_id = d.disease_id) AS alert_checks
+          FROM curated.dim_disease d ORDER BY 1""",
     "Lassa national, last 20 weeks": """
         SELECT week_start, epi_week, suspected, confirmed, deaths, cum_confirmed
           FROM curated.v_weekly_cases WHERE disease_code='LASSA' AND admin_level=0
