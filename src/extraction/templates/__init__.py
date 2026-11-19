@@ -25,6 +25,7 @@ class LayoutTemplate:
     read_summary: bool = True  # "Current week" / "<year> Cumulative" rows
     read_state_table: bool = True
     ocr_state_table: bool = False  # state table is a picture: read it with OCR (state_table_ocr)
+    text_readers: tuple[str, ...] = ()  # plain-text readers to try (text_readers.py): key_indicators, summary_blocks, since_january
     read_disease_rows: bool = False  # WER: one row per disease
     state_default_period: str | None = None  # period for state columns whose header has no period word
     allow_highlights: bool = True  # last resort: read figures from highlight sentences
@@ -55,6 +56,33 @@ TEMPLATES: tuple[LayoutTemplate, ...] = (
         notes="Table 1 summary rows checked against the Week 44 2026 report. Table 3 (states) is an "
         "image in 2022-2026 reports: read by OCR and used only when every column adds up to its Total "
         "row and the confirmed total matches Table 1.",
+    ),
+    LayoutTemplate(
+        template_id="cholera_sitrep_2021_v1",
+        report_type="situation_report",
+        diseases=("CHOLERA",),
+        valid_from=date(2021, 1, 1),
+        valid_to=date(2022, 12, 31),
+        verified=True,
+        text_readers=("summary_blocks", "since_january"),
+        notes="2021-2022 cholera reports: the text layer has no spaces, so sentences cannot be read, but the "
+        "state table has explicit 'Reporting week N' and 'Cumulative' headers and a Total row. Checked against "
+        "the week 25 2021 report (14,343 suspected, 325 deaths since January). 2022 monthly-format reports: "
+        "'Summary of current week' text block (week 26 2022: 23 suspected, 0 deaths; year to date 2,523 / 78, "
+        "equal to the sum of the monthly table).",
+    ),
+    LayoutTemplate(
+        template_id="mpox_key_indicators_v1",
+        report_type="situation_report",
+        diseases=("MPOX",),
+        valid_from=date(2021, 1, 1),
+        valid_to=date(2022, 12, 31),
+        verified=True,
+        read_summary=False,
+        read_state_table=False,
+        text_readers=("key_indicators",),
+        notes="2022 mpox updates: 'Table 1 - Key Indicators' list. Checked against weeks 28 and 46 2022 "
+        "(week 28: 37 suspected, 16 confirmed; Jan-week 28: 338 suspected, 117 confirmed, 3 deaths).",
     ),
     LayoutTemplate(
         template_id="ncdc_sitrep_generic_v1",

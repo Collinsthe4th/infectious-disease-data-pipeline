@@ -22,7 +22,7 @@ _HEADER_RULES: tuple[tuple[str, tuple[str, ...]], ...] = (
 )
 
 _CUMULATIVE_WORDS = re.compile(r"cumulative|\btotal\b|year[-\s]*to[-\s]*date|\bytd\b|20\d\d\s*$", re.I)
-_WEEKLY_WORDS = re.compile(r"current\s*week|this\s*week|\bweek\s*\d+|\bweekly\b|\bnew\b", re.I)
+_WEEKLY_WORDS = re.compile(r"current\s*week|this\s*week|reporting\s*week|\bweek\s*\d+|\bweekly\b|\bnew\b", re.I)
 
 _FOOTNOTE_CHARS = re.compile(r"[*†‡§¹²³⁴⁵⁶⁷⁸⁹⁰#^]+")
 _DASHES = {"-", "–", "—", "−", "nil", "n/a", "na", "nr", "none", "--", "…", "..."}

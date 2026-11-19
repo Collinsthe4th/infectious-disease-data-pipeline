@@ -190,3 +190,10 @@ def test_cumulative_basis(label, expected):
     if "September 2025" in label:
         year = 2026
     assert cumulative_is_calendar(label, year) is expected
+
+
+def test_week_range_title_uses_last_week():
+    from src.extraction.classify import classify
+
+    c = classify("Cholera Situation Report\nEpidemiological week 22-26: 30 May to 3 July 2022\nKey Points")
+    assert c.epi_week == 26

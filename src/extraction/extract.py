@@ -11,6 +11,7 @@ For a manual-entry CSV: one report per disease and week in the file.
 from __future__ import annotations
 
 import logging
+import re
 from dataclasses import dataclass, field
 from datetime import date
 from pathlib import Path
@@ -35,9 +36,10 @@ MEASURES = ("suspected", "confirmed", "deaths", "cum_suspected", "cum_confirmed"
 class ExtractionError(Exception):
     """The document could not be parsed automatically."""
 
-    def __init__(self, message: str, *, manual: bool = True) -> None:
+    def __init__(self, message: str, *, manual: bool = True, epi_year: int | None = None) -> None:
         super().__init__(message)
         self.manual = manual
+        self.epi_year = epi_year  # when known, so reports outside the study period can be set aside
 
 
 @dataclass
@@ -114,7 +116,12 @@ def extract_pdf(doc: Mapping[str, Any], path: Path, alias_map: Mapping[str, str]
                 is_synthetic=bool(doc.get("is_synthetic")),
                 parse_errors=errors,
             )
-    raise ExtractionError(f"no layout template matched (tried: {', '.join(tried) or 'none'})")
+    head = content.head_text().lower()
+    if re.search(r"monthly|data as of|reporting month", head):
+        raise ExtractionError("monthly report: its figures cover a month or an outbreak period, not single weeks, "
+                              f"and no reading template for it yet (tried: {', '.join(tried) or 'none'})",
+                              epi_year=cls.epi_year)
+    raise ExtractionError(f"no layout template matched (tried: {', '.join(tried) or 'none'})", epi_year=cls.epi_year)
 
 
 def _apply_template(
@@ -167,6 +174,27 @@ def _apply_template(
                 rows.extend(ocr_rows)
                 engine = "ocr"  # national figures from the text layer, states by OCR
                 page = page or ocr_page
+
+    if template.text_readers:
+        from src.extraction import text_readers
+
+        text = "\n".join(content.page_texts[:3])
+        found: dict = {}
+        for name in template.text_readers:
+            reader = {"key_indicators": lambda: text_readers.read_key_indicators(text, cls.epi_year, cls.epi_week),
+                      "summary_blocks": lambda: text_readers.read_summary_blocks(text, cls.epi_year, cls.epi_week),
+                      "since_january": lambda: text_readers.read_since_january(text, cls.epi_year)}[name]
+            for k, v in reader().items():
+                found.setdefault(k, v)
+        if cls.period == "monthly":  # a monthly report's period figures are not weekly values
+            found = {k: v for k, v in found.items() if k.startswith("cum_")}
+        if found:
+            if national is None:
+                national = {"location_raw": "National"}
+            for k, v in found.items():
+                if national.get(k) in (None, ""):
+                    national[k] = v
+            page = page or 1
 
     if template.read_disease_rows:
         block = read_disease_rows(content, dash_is_zero=template.dash_is_zero)

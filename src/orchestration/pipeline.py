@@ -241,6 +241,11 @@ def process_documents(ctx: RunContext, *, include_failed: bool = False) -> None:
         try:
             reports = extract_document(doc, path, alias_map)
         except ExtractionError as exc:
+            if exc.epi_year and not s.study_start_year <= exc.epi_year <= s.study_end_year:
+                with ctx.engine.begin() as conn:
+                    repo.set_document_status(conn, doc["document_id"], "ignored",
+                                             f"outside study period {s.study_start_year}-{s.study_end_year}")
+                continue
             status = "manual_queue" if exc.manual else "ignored"
             with ctx.engine.begin() as conn:
                 repo.set_document_status(conn, doc["document_id"], status, str(exc))

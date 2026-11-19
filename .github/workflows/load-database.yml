@@ -20,6 +20,7 @@ on:
           - real-backfill            # full 2021-2026 history (several hours; safe to re-run, it resumes)
           - analytics-only           # recompute trends, alerts and forecasts
           - reread-lassa             # read every Lassa report again (adds the state table, read by OCR)
+          - reread-other-diseases    # read the six other diseases' reports again (new reading templates)
           - remove-synthetic-data    # delete demo data, keep real data (safe while another load runs)
           - demo                     # synthetic data, every feature (refuses if real data is present)
           - RESET-then-real-trial    # DELETES everything, then a real trial
@@ -67,6 +68,10 @@ jobs:
             analytics-only) python -m src.orchestration.cli --plain-logs analytics ;;
             reread-lassa)   python -m src.orchestration.cli --plain-logs reread --disease LASSA --reason "state table OCR" \
                               && python -m src.orchestration.cli --plain-logs process ;;
+            reread-other-diseases)
+              python -m src.orchestration.cli --plain-logs reread \
+                --disease CHOLERA,CSM,DIPHTHERIA,MEASLES,MPOX,YELLOW_FEVER --reason "new reading templates" \
+                && python -m src.orchestration.cli --plain-logs process ;;
             remove-synthetic-data) python -m src.orchestration.cli --plain-logs purge-synthetic ;;
           esac
       - name: Summary

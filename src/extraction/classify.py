@@ -59,9 +59,12 @@ MONTH_YEAR_RE = re.compile(rf"(?<![\d\s]\s){_MONTH}\s*,?\s*(20\d\d)\b", re.IGNOR
 
 EPI_WEEK_RE = re.compile(r"(?:epi(?:demiological)?[\s\-]*)?wee?k\s*(?:no\.?|number)?\s*[:\-]?\s*(\d{1,2})(?!\d{3})\b", re.I)
 EPI_WEEK_YEAR_RE = re.compile(r"(?:epi[\s\-]*)?week\s*[:\-]?\s*(\d{1,2})\s*[,/ ]?\s*(20\d\d)\b", re.I)
+# "Epi week 01-12", "Epidemiological week 22-26": a report covering several weeks is dated to the last one
+WEEK_RANGE_RE = re.compile(r"(?:epi(?:demiological)?[\s\-]*)?wee?ks?\s*[:\-]?\s*(\d{1,2})\s*(?:–|—|-|to)\s*(\d{1,2})\b",
+                           re.I)
 WER_RE = re.compile(r"weekly\s*epidemiological\s*report", re.I)
 SITREP_RE = re.compile(r"situation\s*report|sitrep|an\s*update\s*of|update\s*on", re.I)
-MONTHLY_RE = re.compile(r"monthly\s*sitrep|reporting\s*month|situation\s*report\s*" + _MONTH + r"\s*20\d\d|"
+MONTHLY_RE = re.compile(r"monthly\s*sitrep|monthly\s*update|reporting\s*month|situation\s*report\s*" + _MONTH + r"\s*20\d\d|"
                         r"summary\s*of\s*the\s*current\s*month|new\s*in\s*" + _MONTH + r"|"
                         r"\bin\s+" + _MONTH + r",?\s*20\d\d\s*:", re.I)
 
@@ -185,6 +188,10 @@ def classify(head_text: str, *, listing_title: str | None = None, disease_hint: 
         epi_week, epi_year = int(wy.group(1)), int(wy.group(2))
     elif w:
         epi_week = int(w.group(1))
+    rng = WEEK_RANGE_RE.search(title_area)
+    ranged = bool(rng and int(rng.group(2)) > int(rng.group(1)) and (not w or rng.start() <= w.start()))
+    if ranged:
+        epi_week = int(rng.group(2))
 
     if period == "monthly":
         reference = _month_end(text[:600]) or parse_single_date(text[:800])

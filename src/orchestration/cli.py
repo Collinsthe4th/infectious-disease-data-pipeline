@@ -288,9 +288,9 @@ def cmd_reread(args, settings) -> int:
         n = conn.execute(text(
             """UPDATE raw.documents SET processing_status = 'new',
                       status_reason = 'queued to be read again: ' || :why
-                WHERE NOT is_synthetic AND disease_hint = :d
+                WHERE NOT is_synthetic AND disease_hint = ANY(:d)
                   AND processing_status IN ('parsed', 'parse_failed', 'manual_queue')"""),
-            {"d": args.disease, "why": args.reason}).rowcount
+            {"d": [c.strip() for c in args.disease.split(",")], "why": args.reason}).rowcount
     print(f"{n} {args.disease} files queued to be read again")
     return 0
 
@@ -412,7 +412,7 @@ def build_parser() -> argparse.ArgumentParser:
     sub.add_parser("purge-synthetic", help="remove synthetic demo data, keep real data").set_defaults(func=cmd_purge_synthetic)
 
     rr = sub.add_parser("reread", help="read one disease's reports again with the current parser")
-    rr.add_argument("--disease", required=True)
+    rr.add_argument("--disease", required=True, help="one code or several, comma-separated")
     rr.add_argument("--reason", default="parser updated")
     rr.set_defaults(func=cmd_reread)
 
