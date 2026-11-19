@@ -2,6 +2,7 @@
 so their layouts can be studied and the reading templates extended.
 
     python scripts/fetch_queue_samples.py OUT_DIR [per_disease]
+    python scripts/fetch_queue_samples.py OUT_DIR sha:<prefix>,<prefix>   (specific files, for checking a figure)
 Needs DATABASE_URL (read-only use). Writes the PDFs and an index.csv to OUT_DIR.
 """
 
@@ -19,12 +20,17 @@ from src.ingestion.http import PoliteSession  # noqa: E402
 from src.storage.db import get_engine  # noqa: E402
 
 out = Path(sys.argv[1])
-per = int(sys.argv[2]) if len(sys.argv) > 2 else 6
+per = int(sys.argv[2]) if len(sys.argv) > 2 and sys.argv[2].isdigit() else 6
 out.mkdir(parents=True, exist_ok=True)
 s = get_settings()
 session = PoliteSession(user_agent=s.user_agent, delay_s=2, timeout_s=60, max_retries=2, backoff_base_s=5)
+only = [p for p in (sys.argv[2][4:].split(",") if len(sys.argv) > 2 and sys.argv[2].startswith("sha:") else []) if p]
+if only:
+    per = 10_000
 with get_engine().connect() as conn:
-    docs = conn.execute(text("""
+    docs = conn.execute(text("""SELECT disease_hint, listing_title, source_url, sha256, status_reason
+          FROM raw.documents WHERE sha256 LIKE ANY(:p)"""), {"p": [f"{x}%" for x in only]}).mappings().all() if only else \
+        conn.execute(text("""
         SELECT disease_hint, listing_title, source_url, sha256, status_reason
           FROM raw.documents
          WHERE NOT is_synthetic AND disease_hint <> 'LASSA' AND source_url IS NOT NULL
