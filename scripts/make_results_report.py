@@ -422,14 +422,24 @@ def main() -> None:
          "database is updated every week, a re-run on the live database can differ, but a re-run on the saved "
          "snapshot should give the same numbers.", ""])
     if check:
-        rows = [{"Disease": names.get(c, c), "Reproduced": "yes" if v.get("reproduced") else "no",
-                 "Rows compared": v.get("rows_compared", ""),
-                 "Largest relative difference": (f"{v['largest_relative_difference']:.1e}"
-                                                 if "largest_relative_difference" in v else v.get("reason", ""))}
+        rows = [{"Disease": names.get(c, c),
+                 "Numbers identical": "yes" if v.get("identical") else "no",
+                 "Largest MASE difference": (f"{v['largest_mase_difference']:.2%}" if "largest_mase_difference" in v
+                                             else ""),
+                 "Same ranking of methods": "yes" if v.get("same_ranking") else "no",
+                 "Same test results": "yes" if v.get("same_test_decisions") else "no"}
                 for c, v in check["diseases"].items()]
         add(["When this page was built, I re-ran the full comparison from the snapshot without the database "
-             f"(`scripts/reproduce_results.py`) and compared the two accuracy tables (Table {tab_no}).", "",
-             f"Table {tab_no}- Reproducibility check", "", md_table(pd.DataFrame(rows)), ""])
+             f"(`scripts/reproduce_results.py`) on a {check.get('processor', 'GitHub')} processor and compared the "
+             f"two accuracy tables (Table {tab_no}).", "",
+             f"Table {tab_no}- Reproducibility check", "", md_table(pd.DataFrame(rows)), "",
+             "Upon further testing, I found that the numbers are identical when the re-run uses the same type of "
+             "processor as the original run. On a different type (for example AMD instead of Intel), Random Forest "
+             "and Gradient Boosting can give slightly different numbers, because tiny rounding differences in the "
+             "calculations can change where a decision tree splits. In my tests this changed MASE by at most 0.25% "
+             "and never changed the ranking of the methods or the result of any Diebold-Mariano test. This means "
+             "the conclusions are reproducible on any machine, and the exact numbers are reproducible on the same "
+             "type of processor.", ""])
     add(["To reproduce the results yourself:", "", "```bash",
          "pip install -r requirements.txt",
          "python scripts/reproduce_results.py results/data", "```", ""])

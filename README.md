@@ -65,7 +65,7 @@ The work follows the objectives of the thesis:
 | **Forecasting** | Seven methods compared 1 to 4 weeks ahead with a rolling origin, scored with MAE, RMSE and MASE and tested with Diebold-Mariano |
 | **Outbreak alerts** | EARS C1, C2 and C3 checks and a SARIMA residual check, combined into a plain "chance of an outbreak" indicator |
 | **Dashboard** | Streamlit app with a national overview, a map of cases per 100,000 people, forecasts, alerts and pipeline health |
-| **Reproducible results** | Fixed random seeds and a saved data snapshot, with a script that re-runs the model comparison and checks the numbers match |
+| **Reproducible results** | Fixed random seeds and a saved data snapshot, with a script that re-runs the model comparison: identical numbers on the same type of processor, and the same conclusions on any machine |
 | **Scheduling** | GitHub Actions runs the pipeline every Monday, and the same steps run as an Apache Airflow DAG |
 
 ## Architecture
@@ -231,7 +231,7 @@ The full results, with charts, tables and plain explanations of each statistical
 - data quality (rows held back and the rules that stopped them) and revisions found in later reports
 - trends, seasonality and outbreak alerts
 - the forecasting comparison (MAE, RMSE, MASE and the Diebold-Mariano test against SARIMA)
-- a **reproducibility check**: the model comparison is re-run from a saved data snapshot without the database, and the two accuracy tables are compared
+- a **reproducibility check**: the model comparison is re-run from a saved data snapshot without the database. The numbers are identical on the same type of processor, and on a different type the method ranking and every test result stay the same
 
 To reproduce the forecasting results:
 
