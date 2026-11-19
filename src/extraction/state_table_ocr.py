@@ -58,6 +58,7 @@ class StateTable:
     names: dict[str, str | None]  # OCR name -> matched alias (None when unknown)
     checks: dict[str, tuple[int, int | None, bool]] = field(default_factory=dict)  # column -> (sum, total, ok)
     problems: list[str] = field(default_factory=list)
+    corrections: list[str] = field(default_factory=list)  # single-cell repairs confirmed by the Total row
 
     @property
     def ok(self) -> bool:
@@ -149,6 +150,71 @@ def match_state(raw: str, alias_map: Mapping[str, str]) -> str | None:
 #  Reader
 # --------------------------------------------------------------------------- #
 
+def _treatments(cell, scale: float):
+    from PIL import ImageOps
+
+    base = 2 if scale < 1.5 else 1
+    padded = ImageOps.expand(cell, border=int(10 * scale), fill=255)
+    # Tight crop around the digits (dark pixels only, so grid lines and shading are dropped),
+    # with a generous white margin: Tesseract reads isolated digits far better this way.
+    a = np.asarray(cell)
+    ys, xs = np.nonzero(a < 150)
+    tight = padded
+    if len(xs):
+        tight = ImageOps.expand(cell.crop((max(xs.min() - 2, 0), max(ys.min() - 2, 0), xs.max() + 3, ys.max() + 3)),
+                                border=int(10 * scale), fill=255)
+    return (
+        (tight, 7, base),
+        (tight, 10, base),
+        (padded, 7, base),
+        (padded.point(lambda v: 0 if v < 170 else 255), 7, base * 2),
+        (padded, 8, base * 2),
+        (padded.point(lambda v: 0 if v < 200 else 255), 6, base * 2),
+        (padded.point(lambda v: 0 if v < 140 else 255), 8, base * 3),
+        (padded, 13, base * 3),
+    )
+
+
+def _read_number(cell, scale: float) -> int:
+    """Digits in one cell, or -1 when there is ink but no reading. Tries a few image treatments."""
+    for img, psm, up in _treatments(cell, scale)[:5]:
+        text = "".join(wd["text"] for wd in _tesseract(img, psm=psm, whitelist="0123456789", upscale=up))
+        if text.isdigit():
+            return int(text)
+    return -1
+
+
+def _alternatives(cell, scale: float) -> set[int]:
+    """Every reading any treatment gives for a cell (used only to repair a column that does not add up)."""
+    out = set()
+    for img, psm, up in _treatments(cell, scale):
+        text = "".join(wd["text"] for wd in _tesseract(img, psm=psm, whitelist="0123456789", upscale=up))
+        if text.isdigit():
+            out.add(int(text))
+    return out
+
+
+def _repair_column(col: str, labels: list[str], values: list[dict[str, int]], cells: dict, scale: float,
+                   total: int) -> str | None:
+    """If changing exactly one cell to another reading OCR also produced makes the column add up to
+    its Total, apply it and return a note. Otherwise leave the column alone (it will fail the check)."""
+    fixes = []
+    for j in range(len(values) - 1):
+        cell = cells.get((j, col))
+        if cell is None:
+            continue
+        current = max(values[j].get(col, 0), 0)
+        others = sum(max(v.get(col, 0), 0) for k, v in enumerate(values[:-1]) if k != j)
+        for alt in _alternatives(cell, scale):
+            if alt != current and others + alt == total:
+                fixes.append((j, current, alt))
+    if len(fixes) != 1:
+        return None
+    j, old, new = fixes[0]
+    values[j][col] = new
+    return f"{col} for {labels[j]}: OCR read {old}, corrected to {new} (the only reading that matches the Total row)"
+
+
 def read_table_image(image, alias_map: Mapping[str, str], national_cum_confirmed: int | None = None) -> StateTable:
     """Read Table 3 from a rendered page (PIL image)."""
     if not tesseract_available():
@@ -188,6 +254,11 @@ def read_table_image(image, alias_map: Mapping[str, str], national_cum_confirmed
         return StateTable({}, {}, {}, problems=["no 'Total' row found"])
     body = lines_txt[(head_i[0] + 1 if head_i else 0): total_i[-1] + 1]
     body = [r for r in body if re.search(r"[A-Za-z]{2}", r[2])]
+    # Drop title/header lines OCR picked up above the first state row.
+    first = next((i for i, r in enumerate(body) if match_state(r[2], alias_map)), None)
+    if first is None:
+        return StateTable({}, {}, {}, problems=["no state names recognised"])
+    body = body[first:]
     if len(body) < 10:
         return StateTable({}, {}, {}, problems=[f"only {len(body)} rows found"])
     centres = [(r[0] + r[1]) / 2 for r in body]
@@ -195,6 +266,7 @@ def read_table_image(image, alias_map: Mapping[str, str], national_cum_confirmed
     gap = float(np.median(np.diff(centres)))
 
     values: list[dict[str, int]] = []
+    cells: dict[tuple[int, str], object] = {}
     for j, c in enumerate(centres):
         top = max(c - gap / 2, (centres[j - 1] + c) / 2 if j else c - gap / 2)
         bot = min(c + gap / 2, (centres[j + 1] + c) / 2 if j + 1 < len(centres) else c + gap / 2)
@@ -210,17 +282,21 @@ def read_table_image(image, alias_map: Mapping[str, str], national_cum_confirmed
                 continue
             from PIL import Image
 
-            text = "".join(wd["text"] for wd in _tesseract(Image.fromarray(cell), psm=7, whitelist="0123456789",
-                                                         upscale=2 if scale < 1.5 else 1))
-            if text.isdigit():
-                row[col] = int(text)
-            else:
-                row[col] = -1  # ink but unreadable
+            cells[(j, col)] = Image.fromarray(cell)
+            row[col] = _read_number(cells[(j, col)], scale)
         values.append(row)
 
     total = values[-1]
+    corrections = []
+    for col in NUMERIC:
+        t = total.get(col, -1)
+        if t >= 0 and sum(max(v.get(col, 0), 0) for v in values[:-1]) != t:
+            note = _repair_column(col, labels, values, cells, scale, t)
+            if note:
+                corrections.append(note)
     state_rows = dict(zip(labels[:-1], values[:-1]))
-    table = StateTable(rows=state_rows, total=total, names={n: match_state(n, alias_map) for n in state_rows})
+    table = StateTable(rows=state_rows, total=total, names={n: match_state(n, alias_map) for n in state_rows},
+                       corrections=corrections)
 
     # --- checks
     for name, row in state_rows.items():
@@ -260,7 +336,7 @@ def find_table_page(pdf_path: Path) -> int | None:
     with pdfplumber.open(pdf_path) as pdf:
         for n, page in enumerate(pdf.pages, start=1):
             text = (page.extract_text() or "").lower()
-            if re.search(r"table\s*3\.?\s*weekly and cumulative", text):
+            if re.search(r"table\s*3\.?\s*weekly\s*and\s*cumulative", text):
                 return n
     return None
 
