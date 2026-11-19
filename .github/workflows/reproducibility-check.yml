@@ -1,0 +1,25 @@
+name: Reproducibility check
+
+# Re-runs the forecasting comparison from the saved snapshot in results/data on several
+# machines at once and records each machine's processor, to show whether the results
+# depend on the hardware. No database is needed.
+on:
+  workflow_dispatch:
+
+jobs:
+  rerun:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        attempt: [1, 2, 3, 4]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11", cache: pip }
+      - run: pip install -r requirements.txt
+      - name: Processor
+        run: lscpu | grep -E "Model name|^CPU\(s\)"; python -c "import numpy; numpy.show_config()" 2>&1 | grep -iE "name|openblas|mkl" | head -5
+      - name: Re-run from the snapshot
+        run: python scripts/reproduce_results.py results/data
