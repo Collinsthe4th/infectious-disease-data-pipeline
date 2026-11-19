@@ -1,7 +1,7 @@
 # Settings shared by start.sh and the CI test. Source it: . scripts/airflow_local/env.sh
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 export AIRFLOW_HOME="$REPO/.airflow"
-export AIRFLOW__CORE__DAGS_FOLDER="$REPO/astro/dags"
+export AIRFLOW__CORE__DAGS_FOLDER="$REPO/dags"
 export AIRFLOW__CORE__LOAD_EXAMPLES=False
 export AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_ALL_ADMINS=True   # no login screen (private Codespace only)
 export AIRFLOW__API__EXPOSE_CONFIG=False

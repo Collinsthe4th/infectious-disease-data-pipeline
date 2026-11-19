@@ -12,14 +12,15 @@ Every Monday this DAG runs the five steps of the thesis pipeline, one box each:
 | **analyse** | trends (STL), outbreak alerts, Lassa fever forecasts |
 | **finish_run** | closes the run as success / partial / failed (runs even if a box failed) |
 
-The database address comes from the `DATABASE_URL` environment variable set in
-the Astro Deployment (Environment Variables, marked secret).
+The database address comes from the `DATABASE_URL` environment variable (a
+Codespaces secret, see docs/operations/airflow-codespaces.md).
 """
 
 from __future__ import annotations
 
 import os
 from datetime import datetime, timedelta
+from pathlib import Path
 
 try:  # Airflow 3
     from airflow.providers.standard.operators.bash import BashOperator
@@ -28,10 +29,10 @@ except ImportError:  # Airflow 2
     from airflow import DAG
     from airflow.operators.bash import BashOperator
 
-# Where the pipeline code and its own Python environment are. Defaults suit the Astro image;
-# Codespaces / a laptop set PIPELINE_HOME and PIPELINE_PYTHON (see scripts/airflow_local/start.sh).
-HOME = os.environ.get("PIPELINE_HOME", "/usr/local/airflow/include/pipeline")
-PYTHON = os.environ.get("PIPELINE_PYTHON", "/opt/pipeline_venv/bin/python")
+# Where the pipeline code and its own Python environment are. By default: this repository and the
+# .venv-pipeline made by scripts/airflow_local/setup.sh (overridable with PIPELINE_HOME / PIPELINE_PYTHON).
+HOME = os.environ.get("PIPELINE_HOME", str(Path(__file__).resolve().parents[1]))
+PYTHON = os.environ.get("PIPELINE_PYTHON", f"{HOME}/.venv-pipeline/bin/python")
 PIPELINE = f"cd {HOME} && {PYTHON} -m src.orchestration.cli --plain-logs --trigger airflow"
 ENV = {"DATA_DIR": os.environ.get("PIPELINE_DATA_DIR", f"{HOME}/data"), "PYTHONUNBUFFERED": "1"}
 MAX_FILES = os.environ.get("PIPELINE_MAX_FILES")  # optional: limit downloads per disease (testing)

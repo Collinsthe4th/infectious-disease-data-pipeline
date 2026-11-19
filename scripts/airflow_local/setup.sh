@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # One-time setup of a free, local Airflow (used by GitHub Codespaces; also works on Linux/WSL).
 # Two separate Python environments so Airflow's libraries never clash with the pipeline's:
-#   .venv-airflow   Apache Airflow 3.3.2 (same version as the Astro image)
+#   .venv-airflow   Apache Airflow 3.3.2 (same version as the CI check)
 #   .venv-pipeline  the pipeline (pandas, statsmodels, xgboost, ...)
 set -euo pipefail
 cd "$(dirname "$0")/../.."
@@ -18,7 +18,7 @@ fi
 echo ">> pipeline environment"
 $PY -m venv .venv-pipeline
 .venv-pipeline/bin/pip install -q --upgrade pip
-.venv-pipeline/bin/pip install -q -r astro/pipeline-requirements.txt
+.venv-pipeline/bin/pip install -q -r scripts/airflow_local/pipeline-requirements.txt
 
 echo ">> Airflow ${AIRFLOW_VERSION} environment (Python ${PYV})"
 $PY -m venv .venv-airflow

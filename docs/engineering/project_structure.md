@@ -18,7 +18,7 @@ infectious-disease-data-pipeline/
 │   ├── analytics/  L6 series.py · decomposition.py · anomaly.py · forecasting.py · evaluation.py · run.py
 │   ├── orchestration/ pipeline.py (steps) · cli.py
 │   └── demo/          synthetic.py · pdf_writer.py
-├── astro/             Airflow project for Astronomer: dags/ncdc_disease_pipeline.py · Dockerfile
+├── dags/              Airflow DAG (ncdc_disease_pipeline.py), run in GitHub Codespaces
 ├── results/           results page + charts, rebuilt by GitHub from the demo
 ├── dashboard/      L7 app.py · data.py · ui.py · pages/1_Trends … 5_Pipeline_Health
 ├── tests/unit/        no database

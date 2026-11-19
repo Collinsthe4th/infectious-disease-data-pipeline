@@ -1,6 +1,6 @@
 # Free Airflow in your browser (GitHub Codespaces)
 
-Real Apache Airflow 3.3, the same version as on Astronomer, running on a free GitHub cloud computer. Nothing to install on Windows.
+Real Apache Airflow 3.3 running on a free GitHub cloud computer. Nothing to install on Windows.
 
 **Cost:** free within GitHub's monthly Codespaces allowance (personal accounts get a set number of free core-hours each month; this Codespace uses 4 cores, so it counts 4 core-hours per hour of use). It **stops** when you close it or after 30 minutes idle, so Airflow runs only while you use it. The always-on weekly run is the GitHub workflow **Load data into Supabase**, which runs every Monday by itself.
 

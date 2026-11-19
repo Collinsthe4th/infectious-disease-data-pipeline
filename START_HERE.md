@@ -30,7 +30,7 @@ Every week the pipeline does five jobs, in order. That chain of jobs is what an 
 | 5. Analyse | `src/analytics/forecasting.py`, `anomaly.py` | change the forecast models or alert methods |
 | 5. Show | `dashboard/app.py`, `dashboard/pages/*.py` | change what the dashboard displays |
 | The chain itself | `src/orchestration/pipeline.py` | change what a step does |
-| The Airflow boxes and schedule | `astro/dags/ncdc_disease_pipeline.py` | change the schedule or the order of the boxes |
+| The Airflow boxes and schedule | `dags/ncdc_disease_pipeline.py` | change the schedule or the order of the boxes |
 
 Everything else (tests, Docker files, docs) supports these files; you can ignore it.
 

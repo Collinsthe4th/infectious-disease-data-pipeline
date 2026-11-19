@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
-    paths: ["astro/dags/**", "scripts/airflow_local/**", "src/orchestration/**", ".github/workflows/airflow-local-test.yml"]
+    paths: ["dags/**", "scripts/airflow_local/**", "src/orchestration/**", ".github/workflows/airflow-local-test.yml"]
 
 jobs:
   airflow:

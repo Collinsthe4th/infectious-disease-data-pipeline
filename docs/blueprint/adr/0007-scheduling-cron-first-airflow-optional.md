@@ -1,10 +1,10 @@
 # 0007 Scheduling: a scheduler container by default, Airflow optional
 
-Status: accepted · amended 18 Nov 2026: Airflow runs on Astronomer (managed), deployed from `astro/` by GitHub Actions; see [astronomer.md](../../operations/astronomer.md)
+Status: accepted · amended 19 Nov 2026: Airflow runs in GitHub Codespaces and GitHub Actions runs the weekly schedule; see [airflow-codespaces.md](../../operations/airflow-codespaces.md)
 
 **Context.** Chapter 3 describes Airflow during development with cron as a fallback on a low-cost server.
 
-**Decision.** Pipeline steps are plain Python functions (`src/orchestration/pipeline.py`). Three ways to schedule them use the same functions: (1) `scripts/scheduler.py` in the `scheduler` Compose profile (weekly full run Monday 06:00 WAT, daily light check, three retries at 10/20/40 minutes); (2) an Airflow DAG in `astro/dags/` with the same steps as tasks (each task runs one CLI step in its own Python environment inside the Astro image); (3) system cron calling the CLI.
+**Decision.** Pipeline steps are plain Python functions (`src/orchestration/pipeline.py`). Three ways to schedule them use the same functions: (1) `scripts/scheduler.py` in the `scheduler` Compose profile (weekly full run Monday 06:00 WAT, daily light check, three retries at 10/20/40 minutes); (2) an Airflow DAG in `dags/` with the same steps as tasks (each task runs one CLI step in its own Python environment); (3) system cron calling the CLI.
 
 **Why.** Airflow needs its own database, web server and scheduler: heavy for a single weekly job. Keeping the steps framework-free means switching costs nothing.
 

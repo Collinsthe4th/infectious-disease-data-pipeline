@@ -53,7 +53,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Install Airflow (same version as the Astro Runtime in astro/Dockerfile)
+      - name: Install Airflow (same version as the Codespaces set-up)
         run: |
           pip install "apache-airflow==3.3.2" apache-airflow-providers-standard \
             --constraint "https://raw.githubusercontent.com/apache/airflow/constraints-3.3.2/constraints-3.12.txt"
@@ -68,9 +68,9 @@ jobs:
           except ImportError:
               from airflow.models.dagbag import DagBag
           try:
-              bag = DagBag("astro/dags", include_examples=False)
+              bag = DagBag("dags", include_examples=False)
           except TypeError:  # newer Airflow: examples are controlled by AIRFLOW__CORE__LOAD_EXAMPLES
-              bag = DagBag("astro/dags")
+              bag = DagBag("dags")
           assert not bag.import_errors, bag.import_errors
           print(sorted(bag.dag_ids))
           main = bag.dags["ncdc_disease_pipeline"]  # in memory, no Airflow database needed

@@ -290,7 +290,7 @@ def process_documents(ctx: RunContext, *, include_failed: bool = False) -> None:
 def _fetch_missing_file(doc: dict, path: Path, settings: Settings) -> bool:
     """Download a raw file again when this machine does not have it.
 
-    On Airflow/Astro each task may run on a different worker with its own disk,
+    On Airflow each task may run on a different worker with its own disk,
     so the file saved by the 'collect' task may not be here. The hash in
     raw.documents proves the new copy is the same file.
     """
