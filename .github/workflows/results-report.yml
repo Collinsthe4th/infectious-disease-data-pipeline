@@ -20,7 +20,7 @@ jobs:
   report:
     if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 60
     env:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
     steps:
@@ -28,15 +28,19 @@ jobs:
       - uses: actions/setup-python@v5
         with: { python-version: "3.11", cache: pip }
       - run: pip install -r requirements.txt
-      - name: Write the results page
+      - name: Write the results page and save the data snapshot
         run: |
-          rm -rf results/figures
+          rm -rf results/figures results/data
           python scripts/make_results_report.py --out results
+      - name: Re-run the model comparison from the snapshot (reproducibility check)
+        run: python scripts/reproduce_results.py results/data
+      - name: Rewrite the page with the reproducibility check included
+        run: python scripts/make_results_report.py --out results
       - name: Commit results
         run: |
           git config user.name "Akagha Collins Chisom"
           git config user.email "173009974+Collinsthe4th@users.noreply.github.com"
           git add -A results
           git diff --cached --quiet && echo "no changes" && exit 0
-          git commit -m "Update results report (real NCDC data)"
+          git commit -m "Updated the results report with the latest NCDC data"
           git pull --rebase origin main && git push

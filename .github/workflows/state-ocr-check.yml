@@ -36,5 +36,5 @@ jobs:
           git config user.email "173009974+Collinsthe4th@users.noreply.github.com"
           git checkout -b ocr-debug
           git add -f ocr-debug
-          git commit -qm "OCR debug pages"
+          git commit -qm "Saved state table pages that failed the OCR checks"
           git push -f origin ocr-debug

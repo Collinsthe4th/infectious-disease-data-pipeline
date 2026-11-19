@@ -30,5 +30,5 @@ jobs:
           git config user.email "173009974+Collinsthe4th@users.noreply.github.com"
           git checkout -b parser-samples
           git add -f parser-samples
-          git commit -qm "Parser samples"
+          git commit -qm "Saved samples of reports the parser could not read"
           git push -f origin parser-samples

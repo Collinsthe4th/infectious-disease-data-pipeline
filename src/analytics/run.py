@@ -97,16 +97,9 @@ def run_analytics(engine: Engine, run_id: uuid.UUID, settings: Settings, *, fore
             if pcode not in settings.forecast_locations or ("ALL" not in wanted and disease_code not in wanted):
                 continue
             disease_id, location_id, _ = ids[(disease_code, pcode)]
-            measure = forecast_measure(disease_code, frame)
-            raw = to_weekly_series(frame, measure)
-            ok, why = forecast_eligibility(raw, settings.forecast_horizons,
-                                           max_staleness_weeks=settings.forecast_max_staleness_weeks)
-            if not ok:
+            filled, measure, why = prepare_forecast_series(frame, disease_code, settings)
+            if filled is None:
                 summary.skipped.append(f"no forecast for {disease_code} {pcode}: {why}")
-                continue
-            filled, _ = model_ready(regular_stretch(raw))
-            if len(filled) < 2 * 52 + settings.forecast_horizons + 8:
-                summary.skipped.append(f"no forecast for {disease_code} {pcode}: regular stretch only {len(filled)} weeks")
                 continue
             f_written, e_written = _forecast_series(engine, run_id, settings, disease_id, location_id, filled)
             log.info("forecast %s %s (%s): %s", disease_code, pcode, measure, why)
@@ -117,18 +110,41 @@ def run_analytics(engine: Engine, run_id: uuid.UUID, settings: Settings, *, fore
     return summary
 
 
-def _forecast_series(engine, run_id, settings, disease_id, location_id, y: pd.Series) -> tuple[int, int]:
+def prepare_forecast_series(frame: pd.DataFrame, disease_code: str, settings: Settings,
+                            today: pd.Timestamp | None = None) -> tuple[pd.Series | None, str, str]:
+    """The exact series the models are trained on: (series or None, measure, reason).
+
+    Shared by the pipeline and scripts/reproduce_results.py so a saved snapshot of the
+    weekly figures gives the same model inputs."""
+    measure = forecast_measure(disease_code, frame)
+    raw = to_weekly_series(frame, measure)
+    ok, why = forecast_eligibility(raw, settings.forecast_horizons, today=today,
+                                   max_staleness_weeks=settings.forecast_max_staleness_weeks)
+    if not ok:
+        return None, measure, why
+    filled, _ = model_ready(regular_stretch(raw))
+    if len(filled) < 2 * 52 + settings.forecast_horizons + 8:
+        return None, measure, f"regular stretch only {len(filled)} weeks"
+    return filled, measure, why
+
+
+def evaluate_models(y: pd.Series, settings: Settings) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    """Rolling-origin backtest, accuracy summary (MAE, RMSE, MASE, Diebold-Mariano) and live forecast.
+
+    Deterministic for a given series and settings: every model with randomness uses settings.random_seed."""
     models = available_models(seed=settings.random_seed, sarima_refit_every=settings.sarima_refit_every)
     test_weeks = min(settings.evaluation_weeks, len(y) - 2 * 52 - settings.forecast_horizons)
-    backtest = rolling_origin(y, models, horizons=settings.forecast_horizons, test_weeks=test_weeks)
-    bt = backtest.forecasts
+    bt = rolling_origin(y, models, horizons=settings.forecast_horizons, test_weeks=test_weeks).forecasts
     bt["origin_week_id"] = bt["origin"].map(_week_id)
     bt["target_week_id"] = bt["target"].map(_week_id)
-    first_origin = bt["origin"].min()
-    scale = mase_scale(y[y.index <= first_origin])
+    scale = mase_scale(y[y.index <= bt["origin"].min()])
     evaluation = summarise(bt, scale)
-
     live = live_forecast(y, models, settings.forecast_horizons, bt)
+    return bt, evaluation, live
+
+
+def _forecast_series(engine, run_id, settings, disease_id, location_id, y: pd.Series) -> tuple[int, int]:
+    bt, evaluation, live = evaluate_models(y, settings)
     live["origin_week_id"] = live["origin"].map(_week_id)
     live["target_week_id"] = live["target"].map(_week_id)
 
