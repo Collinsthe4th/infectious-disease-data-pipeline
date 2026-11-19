@@ -6,29 +6,30 @@ This page is rebuilt automatically after every database load, so every number be
 
 ## 1. Data collected
 
-The pipeline downloaded 913 NCDC report files. It read 525 of them automatically, set aside 248 (mostly reports from before the 2021 to 2026 study period) and sent 126 to the manual queue because their layout could not be read with confidence. Table 1 shows what was stored for each disease. Lassa fever had the most complete record, with 238 weeks. This is because NCDC publishes a Lassa fever report almost every week, while the other diseases are reported in short runs during outbreaks or once a month.
+The pipeline downloaded 913 NCDC report files. It read 520 of them automatically, set aside 248 (mostly reports from before the 2021 to 2026 study period) and sent 131 to the manual queue because their layout could not be read with confidence. Table 1 shows what was stored for each disease. Lassa fever had the most complete record, with 237 weeks. This is because NCDC publishes a Lassa fever report almost every week, while the other diseases are reported in short runs during outbreaks or once a month.
 
 Table 1- National figures stored for each disease
 
-| Disease | First week | Last week | Weeks | weekly figures |
+| Disease | First week | Last week | Weeks | Weekly figures |
 |---|---|---|---|---|
 | Cerebrospinal meningitis | 29 May 2023 | 31 Mar 2025 | 8 | yes |
 | Cholera | 29 Mar 2021 | 24 Feb 2025 | 77 | yes |
 | Diphtheria | 27 Nov 2023 | 12 Jan 2026 | 14 | yes |
-| Lassa fever | 04 Jan 2021 | 26 Oct 2026 | 238 | yes |
+| Lassa fever | 04 Jan 2021 | 26 Oct 2026 | 237 | yes |
 | Measles | 30 Jun 2025 | 28 Sep 2026 | 16 | yes |
-| Mpox | 24 May 2021 | 28 Oct 2024 | 112 | yes |
+| Mpox | 24 Jan 2022 | 28 Oct 2024 | 105 | yes |
 | Yellow fever | 25 Jan 2021 | 26 May 2025 | 40 | yes |
 
 
 ## 2. Pipeline runs (RQ1)
 
-Out of 5 recorded runs, 1 finished successfully, 4 finished partly (the run completed but at least one report could not be read or loaded) and 0 failed. A partial run still saves everything it could read, and the reports it could not read are listed for review.
+Out of 6 recorded runs, 2 finished successfully, 4 finished partly (the run completed but at least one report could not be read or loaded) and 0 failed. A partial run still saves everything it could read, and the reports it could not read are listed for review.
 
 Table 2- The ten most recent pipeline runs
 
-| started_at | run_type | status | files_new | rows_extracted | rows_passed | rows_warned | rows_quarantined | revisions_detected | seconds |
+| Started (UTC) | Type | Status | New files | Rows read | Rows loaded | Rows flagged | Rows held back | Revisions | Seconds |
 |---|---|---|---|---|---|---|---|---|---|
+| 2026-11-19 18:31 | manual | success | 0 | 1 | 0 | 0 | 1 | 0 | 272 |
 | 2026-11-19 17:31 | manual | partial | 0 | 311 | 307 | 27 | 4 | 7 | 1977 |
 | 2026-11-19 13:17 | manual | partial | 0 | 5732 | 5439 | 84 | 293 | 17 | 15154 |
 | 2026-11-19 10:34 | manual | partial | 13 | 11283 | 10878 | 389 | 360 | 2059 | 1513 |
@@ -38,15 +39,15 @@ Table 2- The ten most recent pipeline runs
 
 ## 3. Data quality
 
-The validation rules held back 1,032 rows in quarantine (a holding area for figures that fail a check, so they never reach the dashboard). Table 3 shows which rule stopped them. Rows that passed but looked unusual were loaded with a warning flag instead (Table 4).
+The validation rules held back 1,039 rows in quarantine (a holding area for figures that fail a check, so they never reach the dashboard). Table 3 shows which rule stopped them. Rows that passed but looked unusual were loaded with a warning flag instead (Table 4).
 
 Table 3- Rows held back, by rule
 
-| rule | rows_held_back | example |
+| Rule | Rows held back | Example reason |
 |---|---|---|
 | R09_LOCATION | 512 | location 'Abia ▼ 4 1' not in the HDX reference list |
-| parse | 392 | parse failure: could not read the epidemiological week/year from the title page ('Nigeria Centre for Disease Control') |
-| R02_NON_NEGATIVE | 89 | cum_confirmed fell from 10 to 2.0; weekly confirmed would be -8 |
+| parse | 398 | parse failure: could not read the epidemiological week/year from the title page ('Nigeria Centre for Disease Control') |
+| R02_NON_NEGATIVE | 90 | cum_confirmed fell from 10 to 2.0; weekly confirmed would be -8 |
 | R04_DEATHS_LE_CASES | 32 | cum_deaths (2) > cum_confirmed (1) |
 | R03_CONFIRMED_LE_SUSP | 5 | confirmed (10) > suspected (3.0) |
 | R08_EPI_WEEK | 2 | printed dates 2020-12-27–2021-01-02 do not match ISO 2021-W52 (2021-12-27–2022-01-02) |
@@ -54,9 +55,9 @@ Table 3- Rows held back, by rule
 
 Table 4- Warnings on loaded rows
 
-| flag_type | n |
+| Warning | Rows |
 |---|---|
-| R12_COMPLETENESS | 6733 |
+| R12_COMPLETENESS | 6734 |
 | R07_STATE_SUM | 154 |
 | R06_CUM_DECREASE | 130 |
 | R05_CFR_MISMATCH | 50 |
@@ -64,11 +65,11 @@ Table 4- Warnings on loaded rows
 
 ## 4. Revisions (RQ2)
 
-Later reports changed 29 figures that had already been stored. The median revision lag (the number of weeks between the first report and the correction) was 0 weeks. Every change is kept in the revision history table with the old value, the new value and both source reports.
+Later reports changed 29 figures that had already been stored. The median revision lag (the number of weeks between the first report and the correction) was 0 weeks, which means most corrections came in a second report for the same week. Every change is kept in the revision history table with the old value, the new value and both source reports.
 
 Table 5- Revisions by disease
 
-| Disease | revisions | median_lag_weeks |
+| Disease | Revisions | Median lag (weeks) |
 |---|---|---|
 | Cholera | 2 | 0.0 |
 | Lassa fever | 22 | 0.0 |
@@ -77,7 +78,7 @@ Table 5- Revisions by disease
 
 ## 5. Trends (RQ3)
 
-Fig. 1 shows the weekly national figures for every disease that has them. Gaps are weeks with no published report, not weeks with zero cases.
+Fig. 1 shows the weekly national figures for every disease with at least three reported weeks. Lassa fever and mpox are shown as confirmed cases and the others as suspected cases, the measure each disease is analysed with. Gaps are weeks with no published report, not weeks with zero cases.
 
 ![Weekly cases](figures/01_weekly_cases_all_diseases.png)
 
@@ -91,7 +92,7 @@ Fig. 2- Lassa fever trend and seasonal pattern (STL). Source: the researcher.
 
 ## 6. Outbreak alerts (RQ3)
 
-I ran the EARS C1, C2 and C3 checks (simple statistical tests from the US CDC's Early Aberration Reporting System that compare a week with the weeks before it) on every national series, and a SARIMA residual check on the longest series. Together they flagged 192 weeks out of 1,534 checks (Fig. 3).
+I ran the EARS C1, C2 and C3 checks (simple statistical tests from the US CDC's Early Aberration Reporting System that compare a week with the weeks before it) on every national series, and a SARIMA residual check on every series with more than two years of weekly data. Together they flagged 206 weeks out of 1,562 checks (Fig. 3).
 
 ![Alerts](figures/03_alerts_by_disease.png)
 
@@ -115,10 +116,10 @@ Table 6- Alert checks by disease and method
 | Lassa fever | EARS C2 | 29 | 229 |
 | Lassa fever | EARS C3 | 45 | 227 |
 | Lassa fever | SARIMA residual | 14 | 193 |
-| Mpox | EARS C1 | 2 | 87 |
-| Mpox | EARS C2 | 7 | 87 |
-| Mpox | EARS C3 | 10 | 87 |
-| Mpox | SARIMA residual | 0 | 79 |
+| Mpox | EARS C1 | 5 | 94 |
+| Mpox | EARS C2 | 10 | 94 |
+| Mpox | EARS C3 | 18 | 94 |
+| Mpox | SARIMA residual | 0 | 86 |
 
 
 ## 7. Forecasting (RQ4)
@@ -146,18 +147,18 @@ Table 7- Lassa fever: MASE by method and weeks ahead
 | Seasonal naive | 1.093 | 1.109 | 1.125 | 1.134 |
 
 
-The difference from SARIMA was statistically significant at the 5% level for Seasonal naive (p = 0.013). For the other methods the difference could be due to chance.
+At the 5% level, the Diebold-Mariano test found these methods significantly less accurate than SARIMA: Seasonal naive (p = 0.013). For the other methods the difference from SARIMA could be due to chance, so I cannot say that any of them is truly better or worse than SARIMA.
 
 Table 8- Lassa fever: one-week-ahead accuracy and Diebold-Mariano test against SARIMA
 
 | Method | MAE | RMSE | MASE | DM statistic | p-value |
 |---|---|---|---|---|---|
-| Gradient Boosting | 7.965 | 10.048 | 0.657 | -0.477 | 0.635 |
+| SVR | 6.753 | 9.150 | 0.557 | -1.110 | 0.272 |
 | Negative binomial | 7.300 | 9.656 | 0.602 | -1.007 | 0.318 |
 | Random Forest | 7.653 | 9.529 | 0.631 | -0.752 | 0.456 |
-| Seasonal naive | 13.255 | 18.254 | 1.093 | 2.577 | 0.013 |
-| SVR | 6.753 | 9.150 | 0.557 | -1.110 | 0.272 |
+| Gradient Boosting | 7.965 | 10.048 | 0.657 | -0.477 | 0.635 |
 | XGBoost | 8.556 | 10.687 | 0.706 | -0.017 | 0.986 |
+| Seasonal naive | 13.255 | 18.254 | 1.093 | 2.577 | 0.013 |
 
 
 ![Forecast Lassa fever](figures/05_lassa_forecast.png)
