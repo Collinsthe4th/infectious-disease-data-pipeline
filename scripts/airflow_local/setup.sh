@@ -9,6 +9,12 @@ PY=${PYTHON:-python3}
 AIRFLOW_VERSION=3.3.2
 PYV=$($PY -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
 
+echo ">> OCR engine (reads the image-only Lassa state table)"
+if ! command -v tesseract >/dev/null; then
+  (sudo apt-get update -qq && sudo apt-get install -y -qq tesseract-ocr) >/dev/null 2>&1 \
+    || echo "   could not install tesseract: state tables will be skipped (national figures still load)"
+fi
+
 echo ">> pipeline environment"
 $PY -m venv .venv-pipeline
 .venv-pipeline/bin/pip install -q --upgrade pip

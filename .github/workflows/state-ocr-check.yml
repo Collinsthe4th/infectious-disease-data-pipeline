@@ -1,0 +1,24 @@
+name: State table OCR check
+
+# Reads a spread of real Lassa fever reports and shows whether the state table
+# (an image in the PDF) was read correctly. Nothing is written to the database.
+on:
+  workflow_dispatch:
+    inputs:
+      reports:
+        description: "How many reports to check"
+        default: "12"
+  push:
+    paths: ["src/extraction/state_table_ocr.py", "scripts/check_state_ocr.py"]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11", cache: pip }
+      - run: sudo apt-get install -y -qq tesseract-ocr > /dev/null
+      - run: pip install -r requirements.txt
+      - run: python scripts/check_state_ocr.py ${{ github.event.inputs.reports || '12' }}

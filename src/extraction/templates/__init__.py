@@ -24,6 +24,7 @@ class LayoutTemplate:
     valid_to: date | None = None
     read_summary: bool = True  # "Current week" / "<year> Cumulative" rows
     read_state_table: bool = True
+    ocr_state_table: bool = False  # state table is a picture: read it with OCR (state_table_ocr)
     read_disease_rows: bool = False  # WER: one row per disease
     state_default_period: str | None = None  # period for state columns whose header has no period word
     allow_highlights: bool = True  # last resort: read figures from highlight sentences
@@ -50,8 +51,10 @@ TEMPLATES: tuple[LayoutTemplate, ...] = (
         diseases=("LASSA",),
         valid_from=date(2020, 1, 1),
         verified=True,
-        notes="Table 1 summary rows checked against the Week 44 2026 report; "
-        "state table read when it has a text layer.",
+        ocr_state_table=True,
+        notes="Table 1 summary rows checked against the Week 44 2026 report. Table 3 (states) is an "
+        "image in 2022-2026 reports: read by OCR and used only when every column adds up to its Total "
+        "row and the confirmed total matches Table 1.",
     ),
     LayoutTemplate(
         template_id="ncdc_sitrep_generic_v1",

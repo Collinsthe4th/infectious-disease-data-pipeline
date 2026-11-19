@@ -24,6 +24,7 @@ from src.extraction.manual_csv import read_manual_csv
 from src.extraction.parsers import read_disease_rows, read_state_tables, read_summary
 from src.extraction.pdf_reader import NotAPdfError, PdfContent, camelot_tables, read_pdf
 from src.extraction.standardise import clean_count, clean_percent
+from src.extraction import state_table_ocr
 from src.extraction.templates import LayoutTemplate, candidate_templates
 
 log = logging.getLogger(__name__)
@@ -158,6 +159,14 @@ def _apply_template(
                         national = {**r, "location_raw": "National"}
                     continue
                 rows.append(r)
+        elif template.ocr_state_table:
+            ocr_rows, note, ocr_page = _ocr_state_rows(path, alias_map, national)
+            if note:
+                errors.append(note)
+            if ocr_rows:
+                rows.extend(ocr_rows)
+                engine = "ocr"  # national figures from the text layer, states by OCR
+                page = page or ocr_page
 
     if template.read_disease_rows:
         block = read_disease_rows(content, dash_is_zero=template.dash_is_zero)
@@ -179,6 +188,29 @@ def _apply_template(
     df["epi_week"] = cls.epi_week
     df["source_page"] = page
     return df, errors, engine, page
+
+
+def _ocr_state_rows(path: Path, alias_map: Mapping[str, str], national: dict | None
+                    ) -> tuple[list[dict], str | None, int | None]:
+    """State rows from an image-only state table, or a note saying why none were used."""
+    if not state_table_ocr.tesseract_available():
+        return [], "state table is an image and OCR (tesseract) is not installed: national figures only", None
+    target = None
+    if national and national.get("cum_confirmed") not in (None, ""):
+        try:
+            target = clean_count(national["cum_confirmed"])
+        except ValueError:
+            target = None
+    try:
+        table, page = state_table_ocr.read_state_table_pdf(path, alias_map, target)
+    except Exception as exc:  # noqa: BLE001 - OCR problems must never stop the national figures loading
+        log.warning("state table OCR failed for %s: %s", path.name, exc)
+        return [], f"state table OCR failed: {exc}", None
+    if table is None:
+        return [], None, None
+    if not table.ok:
+        return [], "state table (OCR) not used, checks failed: " + "; ".join(table.problems[:4]), page
+    return state_table_ocr.to_rows(table), None, page
 
 
 def _report_code(cls: Classification, doc: Mapping[str, Any]) -> str:

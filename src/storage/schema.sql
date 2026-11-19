@@ -218,7 +218,7 @@ CREATE TABLE IF NOT EXISTS curated.dim_source_report (
     printed_week_start date,     -- dates as printed, kept for rule 8 cross-check
     printed_week_end   date,
     template_id      text,        -- layout template that parsed it
-    extraction_engine text        CHECK (extraction_engine IN ('pdfplumber', 'camelot', 'manual')),
+    extraction_engine text        CHECK (extraction_engine IN ('pdfplumber', 'camelot', 'manual', 'ocr')),
     title            text,
     is_synthetic     boolean      NOT NULL DEFAULT false,
     created_at       timestamptz  NOT NULL DEFAULT now(),
@@ -226,6 +226,11 @@ CREATE TABLE IF NOT EXISTS curated.dim_source_report (
     CONSTRAINT ck_printed_dates CHECK (printed_week_end IS NULL OR printed_week_start IS NULL
                                        OR printed_week_end >= printed_week_start)
 );
+
+-- Image-only state tables are read with OCR (Nov 2026): widen the list on databases created earlier.
+ALTER TABLE curated.dim_source_report DROP CONSTRAINT IF EXISTS dim_source_report_extraction_engine_check;
+ALTER TABLE curated.dim_source_report ADD CONSTRAINT dim_source_report_extraction_engine_check
+    CHECK (extraction_engine IN ('pdfplumber', 'camelot', 'manual', 'ocr'));
 CREATE INDEX IF NOT EXISTS ix_report_week    ON curated.dim_source_report (week_id);
 CREATE INDEX IF NOT EXISTS ix_report_disease ON curated.dim_source_report (disease_id);
 CREATE INDEX IF NOT EXISTS ix_report_document ON curated.dim_source_report (document_id);
