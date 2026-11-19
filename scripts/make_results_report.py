@@ -433,9 +433,9 @@ def main() -> None:
              "(`scripts/reproduce_results.py`) and compared the two accuracy tables (Table "
              f"{tab_no}). The re-run used this processor: {check.get('processor', 'unknown')}.", "",
              f"Table {tab_no}- Reproducibility check", "", md_table(pd.DataFrame(rows)), "",
-             "Upon further testing, I re-ran the comparison on nine machines with five different processor "
-             "models. On four of the models (Intel Xeon Platinum 8370C and 8573C, Intel Xeon 6975P, and AMD EPYC "
-             "9V45 and 9V74) every number was identical. On the fifth (AMD EPYC 7763), Random Forest and Gradient "
+             "Upon further testing, I re-ran the comparison on nine machines with six different processor "
+             "models. On five of them (Intel Xeon Platinum 8370C and 8573C, Intel Xeon 6975P, and AMD EPYC "
+             "9V45 and 9V74) every number was identical. On the sixth (AMD EPYC 7763), Random Forest and Gradient "
              "Boosting gave slightly different numbers, because tiny rounding differences in the calculations can "
              "change where a decision tree splits. This changed MASE by at most 0.25% and did not change the "
              "ranking of the methods or the result of any Diebold-Mariano test. This means the conclusions can be "
