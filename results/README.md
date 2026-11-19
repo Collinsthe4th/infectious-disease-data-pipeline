@@ -185,7 +185,7 @@ Table 9- Diseases without a forecast
 
 The forecasting results can be reproduced. Every method that uses randomness (Random Forest, Gradient Boosting and XGBoost) uses a fixed random seed (42), and the weekly figures the models were trained on are saved with this page in [`results/data`](data). The settings and the code version are saved in [`settings.json`](data/settings.json). Because NCDC revises its figures and the database is updated every week, a re-run on the live database can differ, but a re-run on the saved snapshot should give the same numbers.
 
-When this page was built, I re-ran the full comparison from the snapshot without the database (`scripts/reproduce_results.py`) on a AMD EPYC 9V45 96-Core Processor processor and compared the two accuracy tables (Table 10).
+When this page was built, I re-ran the full comparison from the snapshot without the database (`scripts/reproduce_results.py`) and compared the two accuracy tables (Table 10). The re-run used this processor: AMD EPYC 9V74 80-Core Processor.
 
 Table 10- Reproducibility check
 
@@ -194,7 +194,7 @@ Table 10- Reproducibility check
 | Lassa fever | yes | 0.00% | yes | yes |
 
 
-Upon further testing, I found that the numbers are identical when the re-run uses the same type of processor as the original run. On a different type (for example AMD instead of Intel), Random Forest and Gradient Boosting can give slightly different numbers, because tiny rounding differences in the calculations can change where a decision tree splits. In my tests this changed MASE by at most 0.25% and never changed the ranking of the methods or the result of any Diebold-Mariano test. This means the conclusions are reproducible on any machine, and the exact numbers are reproducible on the same type of processor.
+Upon further testing, I re-ran the comparison on nine machines with six different processor models. On five of them (Intel Xeon Platinum 8370C and 8573C, Intel Xeon 6975P, and AMD EPYC 9V45 and 9V74) every number was identical. On the sixth (AMD EPYC 7763), Random Forest and Gradient Boosting gave slightly different numbers, because tiny rounding differences in the calculations can change where a decision tree splits. This changed MASE by at most 0.25% and did not change the ranking of the methods or the result of any Diebold-Mariano test. This means the conclusions can be reproduced on any machine, and the exact numbers on most processors.
 
 To reproduce the results yourself:
 
