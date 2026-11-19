@@ -26,6 +26,9 @@ severity = importlib.reload(severity)
 HIGH_CHANCE, MODERATE_CHANCE, LOW_CHANCE, NO_DATA = (severity.HIGH_CHANCE, severity.MODERATE_CHANCE,
                                                      severity.LOW_CHANCE, severity.NO_DATA)
 outbreak_chance = severity.outbreak_chance
+import src.analytics.series as series_mod  # noqa: E402
+
+series_mod = importlib.reload(series_mod)
 
 ui.page("Infectious Disease Surveillance — Nigeria",
         subtitle="Real figures from NCDC situation reports, updated automatically every week. "
@@ -35,6 +38,44 @@ weekly = data.national_weekly_all()
 if weekly.empty:
     st.info("No data has been loaded yet.")
     st.stop()
+
+# ----------------------------------------------------------------------------- risk across all diseases
+TONE = {HIGH_CHANCE: "#c62828", MODERATE_CHANCE: "#c2570c", LOW_CHANCE: "#2e7d32", NO_DATA: "#8b8d98"}
+SHORT = {HIGH_CHANCE: "High", MODERATE_CHANCE: "Moderate", LOW_CHANCE: "Low", NO_DATA: "No recent data"}
+all_alerts = data.national_alerts(12)
+
+
+def assess(code: str):
+    """Outbreak chance for one disease (national), with its forecast when there is one."""
+    nat_d = weekly[weekly["disease_code"] == code]
+    al = all_alerts[all_alerts["disease_code"] == code] if not all_alerts.empty else all_alerts
+    fc, _ = data.live_forecast(code)
+    measure = series_mod.forecast_measure(code, nat_d)
+    return outbreak_chance(nat_d, al, fc, forecast_measure=measure), fc, measure
+
+
+assessed = {c: assess(c) for c in sorted(weekly["disease_code"].unique())}
+names_by_code = dict(zip(weekly["disease_code"], weekly["disease_name"]))
+order = {HIGH_CHANCE: 0, MODERATE_CHANCE: 1, LOW_CHANCE: 2, NO_DATA: 3}
+tiles = []
+for c, (ch, fc, _) in sorted(assessed.items(), key=lambda kv: (order[kv[1][0].level], names_by_code[kv[0]])):
+    last = weekly[(weekly["disease_code"] == c)].dropna(subset=["suspected", "confirmed", "deaths"], how="all")
+    sub = (f"last weekly report {last['week_start'].max():%d %b %Y}" if not last.empty else "running totals only")
+    tiles.append(f'<div class="rs-tile" style="--t:{TONE[ch.level]}"><div class="rs-name">{names_by_code[c]}</div>'
+                 f'<div class="rs-level">{SHORT[ch.level]}</div><div class="rs-sub">{sub}'
+                 f'{" · forecast" if fc is not None else ""}</div></div>')
+st.subheader("Chance of an outbreak — all seven diseases")
+st.markdown("""<style>
+.rs{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin:4px 0 4px}
+.rs-tile{border:1px solid rgba(128,128,128,.3);border-top:4px solid var(--t);border-radius:10px;padding:9px 12px;
+  background:color-mix(in srgb,var(--t) 8%,transparent)}
+.rs-name{font-size:.85rem;font-weight:600}
+.rs-level{font-size:1.15rem;font-weight:750;color:var(--t)}
+.rs-sub{font-size:.72rem;opacity:.7}
+</style><div class="rs">""" + "".join(tiles) + "</div>", unsafe_allow_html=True)
+st.caption("Based on the alert checks, recent weeks compared with the usual level, and the forecast where there is "
+           "one. 'No recent data' means NCDC has not published weekly figures for that disease recently. "
+           "Choose a disease in the sidebar for the details below.")
 
 # ----------------------------------------------------------------------------- this week's reports
 def sparkline(values: list[float], colour: str, width: int = 120, height: int = 34) -> str:
@@ -60,6 +101,7 @@ CARD_CSS = """<style>
 .card .what{font-size:.8rem;opacity:.75}
 .card .chg{font-size:.85rem;font-weight:600;margin-top:2px}
 .card .more{font-size:.78rem;opacity:.75;margin-top:6px}
+.card.muted{opacity:.8;border-style:dashed}
 .up{color:#e5484d}.down{color:#30a46c}.flat{color:#8b8d98}
 </style>"""
 
@@ -102,36 +144,32 @@ if cards:
     st.markdown(CARD_CSS + '<div class="cards">' + "".join(cards) + "</div>", unsafe_allow_html=True)
 else:
     st.info("No weekly figures were published for this week.")
-last_seen = (has_figure.groupby("disease_name")["week_start"].max().sort_values(ascending=False))
-quiet = [f"{d} ({w:%d %b %Y})" for d, w in last_seen.items() if w != current]
-no_weekly = sorted(set(weekly["disease_name"]) - set(last_seen.index))
-if quiet or no_weekly:
-    st.markdown("<span style='font-size:.85rem;opacity:.75'>Not reported this week — last weekly report: "
-                + ", ".join(quiet + [f"{d} (running totals only)" for d in no_weekly]) + "</span>",
-                unsafe_allow_html=True)
+others = []
+for disease, group in weekly.groupby("disease_name", sort=True):
+    col, _ = ui.best_series(group)
+    if col is None:
+        continue
+    g = group.dropna(subset=[col]).sort_values("week_start")
+    if g.empty or g["week_start"].iloc[-1] == current:
+        continue
+    now = g.iloc[-1]
+    ago = (current - now["week_start"]).days // 7
+    when = f"week of {now['week_start']:%d %b %Y} · {ago} week{'s' if ago != 1 else ''} before this week"
+    others.append(
+        f'<div class="card muted"><div class="name">{disease}</div>'
+        f'<div class="row"><div><div class="num">{int(now[col]):,}</div><div class="what">{ui.label(col).lower()}</div>'
+        f'</div>{sparkline(g[col].tail(12).astype(float).tolist(), "#8b8d98")}</div>'
+        f'<div class="more">{when}</div></div>')
+if others:
+    st.markdown("**Latest report for the other diseases**")
+    st.markdown(CARD_CSS + '<div class="cards">' + "".join(others) + "</div>", unsafe_allow_html=True)
 
 # ----------------------------------------------------------------------------- outbreak chance, selected disease
 st.divider()
 code, name = ui.disease_picker()
 nat = weekly[weekly["disease_code"] == code]
-alerts = data.national_alerts(12)
-alerts = alerts[alerts["disease_code"] == code] if not alerts.empty else alerts
-
-forecast = None
-run_id = data.latest_forecast_run()
-if run_id:
-    live = data.forecasts(run_id, backtest=False)
-    live = live[(live["pcode"] == "NG") & (live["disease_name"] == name)] if not live.empty else live
-    if not live.empty:
-        evaln = data.evaluation(run_id)
-        e1 = evaln[(evaln["pcode"] == "NG") & (evaln["horizon"] == 1)].drop_duplicates("model_name") if not evaln.empty else evaln
-        best = e1.sort_values("mase").iloc[0]["model_name"] if not e1.empty else live["model_name"].iloc[0]
-        forecast = live[live["model_name"] == best]
-
-chance = outbreak_chance(nat, alerts, forecast)
+chance, forecast, fc_measure = assessed[code] if code in assessed else assess(code)
 # Risk readout: a three-step scale with the current level lit, then the evidence as plain figures.
-TONE = {HIGH_CHANCE: "#c62828", MODERATE_CHANCE: "#c2570c", LOW_CHANCE: "#2e7d32", NO_DATA: "#8b8d98"}
-SHORT = {HIGH_CHANCE: "High", MODERATE_CHANCE: "Moderate", LOW_CHANCE: "Low", NO_DATA: "No recent data"}
 tone = TONE[chance.level]
 steps = "".join(
     f'<div class="rk-step{" on" if lvl == chance.level else ""}" style="--c:{TONE[lvl]}">{SHORT[lvl]}</div>'
@@ -145,7 +183,7 @@ def figure(value: str, label: str) -> str:
 
 figs = []
 if chance.forecast_mean is not None:
-    figs.append(figure(f"{chance.forecast_mean:.0f}", "confirmed cases a week<br>forecast, next 4 weeks"))
+    figs.append(figure(f"{chance.forecast_mean:.0f}", f"{fc_measure} cases a week<br>forecast, next 4 weeks"))
 if chance.forecast_usual:
     figs.append(figure(f"{chance.forecast_usual:.0f}", "usual for this<br>time of year"))
 if b.vs_usual_ratio is not None:
@@ -183,8 +221,8 @@ st.markdown(f"""<style>
   <div class="rk-body">{"".join(figs)}</div>
   <div class="rk-note">{summary}</div>
 </div>""", unsafe_allow_html=True)
-st.caption(("" if forecast is not None else "No forecast for this disease (forecasts are made for Lassa fever), "
-            "so this uses the alert checks and recent weeks only. ")
+st.caption(("" if forecast is not None else "No forecast for this disease yet (it needs about two years of regular "
+            "weekly reports; see the Forecasts page), so this uses the alert checks and recent weeks only. ")
            + "A research indicator to show where to look first — not an official NCDC alert.")
 with st.expander("How is this decided?"):
     st.markdown("""

@@ -149,7 +149,7 @@ def latest_forecast_run() -> str | None:
 @st.cache_data(ttl=TTL)
 def forecasts(run_id: str, backtest: bool) -> pd.DataFrame:
     df = query(
-        """SELECT f.model_name, d.disease_name, l.pcode, COALESCE(l.state_name, l.country_name) AS location_name,
+        """SELECT f.model_name, d.disease_code, d.disease_name, l.pcode, COALESCE(l.state_name, l.country_name) AS location_name,
                   o.week_start AS origin_week, t.week_start AS target_week, f.horizon, f.predicted, f.actual,
                   f.lower_80, f.upper_80, f.lower_95, f.upper_95
              FROM analytics.forecast f
@@ -168,10 +168,26 @@ def forecasts(run_id: str, backtest: bool) -> pd.DataFrame:
 @st.cache_data(ttl=TTL)
 def evaluation(run_id: str) -> pd.DataFrame:
     return query(
-        """SELECT e.model_name, l.pcode, e.horizon, e.n_origins, e.mae, e.rmse, e.mase,
+        """SELECT e.model_name, d.disease_code, l.pcode, e.horizon, e.n_origins, e.mae, e.rmse, e.mase,
                   e.dm_reference_model, e.dm_statistic, e.dm_p_value
              FROM analytics.model_evaluation e JOIN curated.dim_location l USING (location_id)
-            WHERE e.run_id = CAST(:r AS uuid) ORDER BY l.pcode, e.horizon, e.mase""", r=run_id)
+             JOIN curated.dim_disease d USING (disease_id)
+            WHERE e.run_id = CAST(:r AS uuid) ORDER BY d.disease_code, l.pcode, e.horizon, e.mase""", r=run_id)
+
+
+def live_forecast(disease_code: str, pcode: str = "NG") -> tuple[pd.DataFrame | None, str | None]:
+    """The next-weeks forecast from the most accurate model for one disease, and that model's name."""
+    run_id = latest_forecast_run()
+    if not run_id:
+        return None, None
+    live = forecasts(run_id, backtest=False)
+    live = live[(live["disease_code"] == disease_code) & (live["pcode"] == pcode)] if not live.empty else live
+    if live.empty:
+        return None, None
+    ev = evaluation(run_id)
+    ev = ev[(ev["disease_code"] == disease_code) & (ev["pcode"] == pcode) & (ev["horizon"] == 1)] if not ev.empty else ev
+    best = ev.sort_values("mase").iloc[0]["model_name"] if not ev.empty else live["model_name"].iloc[0]
+    return live[live["model_name"] == best].sort_values("target_week"), best
 
 
 @st.cache_data(ttl=TTL)
