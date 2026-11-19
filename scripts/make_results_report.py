@@ -83,7 +83,9 @@ def main() -> None:
         runs = q(conn, """SELECT started_at, run_type, status, files_new, rows_extracted, rows_passed,
                                  rows_warned, rows_quarantined, revisions_detected,
                                  EXTRACT(EPOCH FROM (ended_at - started_at))::int AS seconds
-                            FROM ops.pipeline_run_log ORDER BY started_at DESC LIMIT 12""")
+                            FROM ops.pipeline_run_log
+                           WHERE COALESCE(error_message, '') NOT LIKE '%synthetic demo run%'
+                           ORDER BY started_at DESC LIMIT 12""")
         quarantine = q(conn, """SELECT COALESCE(r.rule_code, 'parse') AS rule, count(*) AS rows_held_back,
                                        min(q.failure_reason) AS example
                                   FROM ops.quarantine q LEFT JOIN ops.validation_rule r USING (rule_id)
