@@ -1,0 +1,52 @@
+name: Airflow end-to-end test
+
+# Starts real Apache Airflow (the same setup as the Codespace), then runs the weekly
+# DAG once against live ncdc.gov.ng, limited to 1 report per disease, into a throwaway
+# PostgreSQL database. Proves the six boxes work together, not just that the file loads.
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ["astro/dags/**", "scripts/airflow_local/**", "src/orchestration/**", ".github/workflows/airflow-local-test.yml"]
+
+jobs:
+  airflow:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env: { POSTGRES_USER: t, POSTGRES_PASSWORD: t, POSTGRES_DB: t }
+        ports: ["5432:5432"]
+        options: --health-cmd "pg_isready -U t" --health-interval 5s --health-timeout 5s --health-retries 20
+    env:
+      DATABASE_URL: postgresql://t:t@localhost:5432/t
+      PIPELINE_MAX_FILES: "1"
+      REQUEST_DELAY_S: "3"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - name: Set up Airflow + pipeline (scripts/airflow_local/setup.sh)
+        run: bash scripts/airflow_local/setup.sh
+      - name: Run the weekly DAG once in Airflow
+        run: |
+          . scripts/airflow_local/env.sh
+          airflow db migrate > /dev/null
+          airflow dags list | grep -E "ncdc_disease_pipeline|load_demo_data|ncdc_backfill"
+          airflow dags test ncdc_disease_pipeline 2026-11-16 2>&1 | tee dag_test.log | grep -E "Marking task|state=|success|failed" | tail -20 || true
+      - name: Check the run in the pipeline's own run log
+        run: |
+          .venv-pipeline/bin/python - <<'PY'
+          from sqlalchemy import text
+          from src.storage.db import get_engine
+          with get_engine().connect() as c:
+              run = c.execute(text("SELECT status, trigger_source, files_new, rows_passed, error_message FROM ops.pipeline_run_log ORDER BY started_at DESC LIMIT 1")).one()
+              docs = c.execute(text("SELECT processing_status, count(*) FROM raw.documents GROUP BY 1")).all()
+              facts = c.execute(text("SELECT count(*) FROM curated.fact_weekly_cases")).scalar_one()
+          print("run:", run); print("documents:", docs); print("facts:", facts)
+          assert run.trigger_source == "airflow", run
+          assert run.status in ("success", "partial"), run
+          assert run.files_new >= 5, run
+          PY

@@ -1,0 +1,13 @@
+{
+  "name": "NCDC pipeline + Airflow",
+  "image": "mcr.microsoft.com/devcontainers/python:3.12",
+  "hostRequirements": { "cpus": 4, "memory": "8gb" },
+  "postCreateCommand": "bash scripts/airflow_local/setup.sh",
+  "postStartCommand": "nohup bash scripts/airflow_local/start.sh > /tmp/airflow.log 2>&1 &",
+  "forwardPorts": [8080],
+  "portsAttributes": { "8080": { "label": "Airflow", "onAutoForward": "openBrowser" } },
+  "secrets": {
+    "DATABASE_URL": { "description": "Your Supabase Session pooler connection string" }
+  },
+  "customizations": { "vscode": { "extensions": ["ms-python.python"] } }
+}

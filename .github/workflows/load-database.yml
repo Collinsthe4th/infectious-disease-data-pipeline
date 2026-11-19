@@ -6,23 +6,31 @@ name: Load data into Supabase
 # Then: Actions tab -> Load data into Supabase -> Run workflow -> choose what to load.
 
 on:
+  schedule:
+    - cron: "17 5 * * 1"   # every Monday ~06:17 Nigeria time: the normal weekly run (free, always on)
   workflow_dispatch:
     inputs:
       what:
         description: "What to load"
         type: choice
-        default: demo
+        default: real-weekly
         options:
-          - demo            # synthetic data, every feature (about 10 minutes)
-          - real-trial      # 3 newest real NCDC reports per disease
-          - real-weekly     # a normal weekly run against ncdc.gov.ng
-          - real-backfill   # full 2021-2026 history (several hours)
-          - analytics-only  # recompute trends, alerts and forecasts
+          - real-weekly              # a normal weekly run against ncdc.gov.ng
+          - real-trial               # 3 newest real NCDC reports per disease
+          - real-backfill            # full 2021-2026 history (several hours; safe to re-run, it resumes)
+          - analytics-only           # recompute trends, alerts and forecasts
+          - demo                     # synthetic data, every feature
+          - RESET-then-real-trial    # DELETES everything, then a real trial
+          - RESET-then-real-backfill # DELETES everything, then the full real history
+      confirm:
+        description: "For the RESET options only: type DELETE"
+        default: ""
 
 jobs:
   load:
     runs-on: ubuntu-latest
     timeout-minutes: 350
+    concurrency: { group: database-load, cancel-in-progress: false }
     env:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
     steps:
@@ -35,9 +43,18 @@ jobs:
           if [ -z "$DATABASE_URL" ]; then echo "::error::Add the DATABASE_URL repository secret first (see the top of this file)"; exit 1; fi
       - name: Create tables (safe to repeat)
         run: python -m src.orchestration.cli --plain-logs init-db
+      - name: Reset (only for the RESET options)
+        if: startsWith(github.event.inputs.what, 'RESET')
+        run: |
+          if [ "${{ github.event.inputs.confirm }}" != "DELETE" ]; then
+            echo "::error::Type DELETE in the confirm box to reset the database."; exit 1
+          fi
+          python -m src.orchestration.cli --plain-logs reset-db --yes
       - name: Load
         run: |
-          case "${{ github.event.inputs.what }}" in
+          case "${{ github.event.inputs.what || 'real-weekly' }}" in
+            RESET-then-real-trial)    python -m src.orchestration.cli --plain-logs backfill --max-files 3 ;;
+            RESET-then-real-backfill) python -m src.orchestration.cli --plain-logs backfill ;;
             demo)           python -m src.orchestration.cli --plain-logs demo ;;
             real-trial)     python -m src.orchestration.cli --plain-logs backfill --max-files 3 ;;
             real-weekly)    python -m src.orchestration.cli --plain-logs run ;;

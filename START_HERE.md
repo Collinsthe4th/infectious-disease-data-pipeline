@@ -49,5 +49,11 @@ Everything else (tests, Docker files, docs) supports these files; you can ignore
 
 Never paste the password into a file in the repository, an issue or a chat.
 
-## Airflow (Astronomer)
+## Running it every week (free)
 
+- **Automatic, always on:** the GitHub workflow **Load data into Supabase** runs the weekly pipeline every Monday by itself. Nothing to do.
+- **Airflow, to watch and demonstrate it:** open a free GitHub Codespace and Airflow starts in your browser, showing the pipeline as six boxes. Guide: [docs/operations/airflow-codespaces.md](docs/operations/airflow-codespaces.md).
+
+## Switching between demo and real data
+
+Actions → **Load data into Supabase** → Run workflow → choose `RESET-then-real-trial` (or `RESET-then-real-backfill`) and type `DELETE` in the confirm box. This empties the database first, so the demo is gone and only real NCDC data remains.

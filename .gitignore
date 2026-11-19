@@ -15,3 +15,8 @@ data/**/*
 !data/**/
 !data/**/.gitkeep
 !data/reference/*.csv
+
+# local Airflow
+.venv-airflow/
+.venv-pipeline/
+.airflow/

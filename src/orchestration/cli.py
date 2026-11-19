@@ -236,6 +236,25 @@ def cmd_finish_run(args, settings) -> int:
     return 0 if status != "failed" else 1
 
 
+def cmd_reset_db(args, settings) -> int:
+    """Delete EVERYTHING (all five schemas) and recreate empty tables. Used to switch from demo to real data."""
+    if not args.yes:
+        print("Refusing: add --yes to confirm that all data in the database will be deleted.")
+        return 1
+    from sqlalchemy import text
+
+    from src.orchestration.pipeline import init_database
+    from src.storage.db import get_engine
+
+    engine = get_engine(settings.database_url)
+    with engine.begin() as conn:
+        for schema in ("analytics", "staging", "curated", "raw", "ops"):
+            conn.execute(text(f"DROP SCHEMA IF EXISTS {schema} CASCADE"))
+    counts = init_database(settings, engine)
+    print(f"Database emptied and recreated ({counts['states']} states loaded).")
+    return 0
+
+
 def cmd_refresh_population(args, settings) -> int:
     from src.ingestion.hdx import refresh_population
     from src.ingestion.http import PoliteSession
@@ -329,6 +348,10 @@ def build_parser() -> argparse.ArgumentParser:
     fr = sub.add_parser("finish-run", help="close a run started with start-run")
     fr.add_argument("--run-id", required=True)
     fr.set_defaults(func=cmd_finish_run)
+
+    rd = sub.add_parser("reset-db", help="DELETE all data and recreate empty tables")
+    rd.add_argument("--yes", action="store_true")
+    rd.set_defaults(func=cmd_reset_db)
 
     sub.add_parser("refresh-population").set_defaults(func=cmd_refresh_population)
     sub.add_parser("status").set_defaults(func=cmd_status)

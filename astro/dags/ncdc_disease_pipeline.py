@@ -18,6 +18,7 @@ the Astro Deployment (Environment Variables, marked secret).
 
 from __future__ import annotations
 
+import os
 from datetime import datetime, timedelta
 
 try:  # Airflow 3
@@ -27,9 +28,14 @@ except ImportError:  # Airflow 2
     from airflow import DAG
     from airflow.operators.bash import BashOperator
 
-# The pipeline code and its own Python environment inside the Astro image.
-PIPELINE = "cd /usr/local/airflow/include/pipeline && /opt/pipeline_venv/bin/python -m src.orchestration.cli --plain-logs --trigger airflow"
-ENV = {"DATA_DIR": "/usr/local/airflow/include/pipeline/data", "PYTHONUNBUFFERED": "1"}
+# Where the pipeline code and its own Python environment are. Defaults suit the Astro image;
+# Codespaces / a laptop set PIPELINE_HOME and PIPELINE_PYTHON (see scripts/airflow_local/start.sh).
+HOME = os.environ.get("PIPELINE_HOME", "/usr/local/airflow/include/pipeline")
+PYTHON = os.environ.get("PIPELINE_PYTHON", "/opt/pipeline_venv/bin/python")
+PIPELINE = f"cd {HOME} && {PYTHON} -m src.orchestration.cli --plain-logs --trigger airflow"
+ENV = {"DATA_DIR": os.environ.get("PIPELINE_DATA_DIR", f"{HOME}/data"), "PYTHONUNBUFFERED": "1"}
+MAX_FILES = os.environ.get("PIPELINE_MAX_FILES")  # optional: limit downloads per disease (testing)
+LIMIT = f" --max-files {MAX_FILES}" if MAX_FILES else ""
 RUN_ID = "{{ ti.xcom_pull(task_ids='start_run') }}"
 
 DEFAULT_ARGS = {
@@ -58,7 +64,7 @@ with DAG(
 ):
     start = box("start_run", f"{PIPELINE} init-db >/dev/null && {PIPELINE} start-run --type scheduled --dag-id ncdc_disease_pipeline",
                 retries=0)
-    collect = box("collect_reports", f"{PIPELINE} step collect --run-id {RUN_ID}")
+    collect = box("collect_reports", f"{PIPELINE} step collect --run-id {RUN_ID}{LIMIT}")
     read_check_save = box("read_check_save", f"{PIPELINE} step process --run-id {RUN_ID}")
     quality = box("quality_checks", f"{PIPELINE} step quality --run-id {RUN_ID}")
     analyse = box("analyse", f"{PIPELINE} step analyse --run-id {RUN_ID}", execution_timeout=timedelta(hours=2))
