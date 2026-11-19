@@ -26,8 +26,11 @@ c1.metric("Runs that completed", f"{completed:.0f}%" if completed == completed e
                "read and was listed for review). A failed run is one that stopped.")
 c2.metric("Last run", {"success": "Success", "partial": "Partly", "failed": "Failed", "running": "Running"}
           .get(runs.iloc[0]["status"], runs.iloc[0]["status"]), help=str(runs.iloc[0]["started_at"]))
-c3.metric("Rows held back for review", f"{int(totals['held_back']):,}",
-          help="Figures that broke a data rule (for example more deaths than cases) and were not loaded.")
+reports_held = int(totals["held_back_reports"])
+c3.metric("Waiting for review", f"{int(totals['held_back']):,}",
+          help=f"{reports_held:,} whole reports that could not be read and {int(totals['held_back']) - reports_held:,} "
+               "single figures that broke a data rule (for example more deaths than cases). None of them were loaded. "
+               "When a report is read again, its earlier entries are closed, so each item is counted once.")
 c4.metric("Figures NCDC later corrected", f"{int(totals['revisions']):,}",
           help="Times a later report changed a number that had already been published.")
 

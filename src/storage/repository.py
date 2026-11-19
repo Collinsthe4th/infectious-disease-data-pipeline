@@ -368,6 +368,44 @@ def merge_staging(conn: Connection, run_id: uuid.UUID, report_id: int) -> dict[s
 #  Quarantine and data-quality flags
 # =============================================================================
 
+def supersede_quarantine(conn: Connection, document_id: int, note: str) -> int:
+    """Close the open review entries of a file that is being read again, so each item is listed once
+    (the new reading adds fresh entries for anything that still fails)."""
+    return conn.execute(
+        text("""UPDATE ops.quarantine SET review_status = 'ignored', reviewed_at = now(), review_note = :n
+                 WHERE document_id = :d AND review_status = 'open'"""), {"d": document_id, "n": note}).rowcount
+
+
+def tidy_quarantine(conn: Connection) -> dict[str, int]:
+    """One-off clean-up of entries left open by earlier re-reads (safe to repeat).
+
+    1. Files read more than once: only entries from the latest run that touched the file stay open.
+    2. Files now read successfully: their whole-file parse failures are closed.
+    3. Files set aside as outside the study period: all their entries are closed.
+    """
+    older = conn.execute(text(
+        """UPDATE ops.quarantine q SET review_status = 'ignored', reviewed_at = now(),
+                  review_note = 'superseded: the file was read again in a later run'
+             FROM (SELECT document_id, max(quarantined_at) AS latest FROM ops.quarantine GROUP BY 1) l
+            WHERE q.document_id = l.document_id AND q.review_status = 'open'
+              AND q.quarantined_at < l.latest - interval '1 minute'""")).rowcount
+    parsed = conn.execute(text(
+        """UPDATE ops.quarantine q SET review_status = 'ignored', reviewed_at = now(),
+                  review_note = 'superseded: the file was later read successfully'
+             FROM raw.documents d
+            WHERE d.document_id = q.document_id AND q.review_status = 'open' AND q.scope = 'document'
+              AND d.processing_status = 'parsed'""")).rowcount
+    out_of_period = conn.execute(text(
+        """UPDATE ops.quarantine q SET review_status = 'ignored', reviewed_at = now(),
+                  review_note = 'file set aside: ' || d.status_reason
+             FROM raw.documents d
+            WHERE d.document_id = q.document_id AND q.review_status = 'open'
+              AND d.processing_status = 'ignored'""")).rowcount
+    still_open = conn.execute(text("SELECT count(*) FROM ops.quarantine WHERE review_status = 'open'")).scalar_one()
+    return {"superseded_by_rereads": older, "file_later_read": parsed, "file_set_aside": out_of_period,
+            "still_open": still_open}
+
+
 def insert_quarantine(
     conn: Connection,
     *,

@@ -122,7 +122,9 @@ def main() -> None:
         quarantine = q(conn, """SELECT COALESCE(r.rule_code, 'parse') AS rule, count(*) AS rows_held_back,
                                        min(q.failure_reason) AS example
                                   FROM ops.quarantine q LEFT JOIN ops.validation_rule r USING (rule_id)
+                                 WHERE q.review_status = 'open'
                                  GROUP BY 1 ORDER BY 2 DESC""")
+        closed = int(q(conn, "SELECT count(*) AS n FROM ops.quarantine WHERE review_status <> 'open'")["n"].iloc[0])
         flags = q(conn, "SELECT flag_type, count(*) AS n FROM ops.data_quality_flag GROUP BY 1 ORDER BY 2 DESC")
         revisions = q(conn, """SELECT d.disease_name, h.field_name, h.old_value, h.new_value, h.revision_lag_weeks
                                  FROM curated.revision_history h JOIN curated.dim_disease d USING (disease_id)
@@ -185,10 +187,15 @@ def main() -> None:
 
     # ------------------------------------------------------------------ 3 quality
     held = int(quarantine["rows_held_back"].sum()) if not quarantine.empty else 0
+    parse_held = int(quarantine.loc[quarantine["rule"] == "parse", "rows_held_back"].sum()) if not quarantine.empty else 0
     add(["## 3. Data quality", "",
-         f"The validation rules held back {n(held)} rows in quarantine (a holding area for figures that fail a "
-         "check, so they never reach the dashboard). Table 3 shows which rule stopped them. Rows that passed but "
-         "looked unusual were loaded with a warning flag instead (Table 4).", "",
+         f"{n(held)} items are waiting for review in quarantine (a holding area for anything that fails a check, so "
+         f"it never reaches the dashboard). {n(parse_held)} of them are whole reports that could not be read with "
+         f"confidence, and {n(held - parse_held)} are single figures that broke a validation rule. Table 3 shows "
+         "which rule stopped them. When a report is read again, its earlier entries are closed and only the new "
+         f"result is kept, so each item is counted once ({n(closed)} earlier entries have been closed this way "
+         "or because the report was later read successfully). Figures that passed but looked unusual were loaded "
+         "with a warning flag instead (Table 4).", "",
          "Table 3- Rows held back, by rule", "",
          md_table(quarantine.rename(columns={"rule": "Rule", "rows_held_back": "Rows held back",
                                              "example": "Example reason"})), "",

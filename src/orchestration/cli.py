@@ -327,6 +327,17 @@ def cmd_retract(args, settings) -> int:
     return 0
 
 
+def cmd_tidy_quarantine(args, settings) -> int:
+    """Close review entries left open by earlier re-reads, so every item is listed once."""
+    from src.storage import repository as repo
+    from src.storage.db import get_engine
+
+    with get_engine(settings.database_url).begin() as conn:
+        result = repo.tidy_quarantine(conn)
+    print(", ".join(f"{k.replace('_', ' ')}: {v}" for k, v in result.items()))
+    return 0
+
+
 def cmd_reset_db(args, settings) -> int:
     """Delete EVERYTHING (all five schemas) and recreate empty tables. Used to switch from demo to real data."""
     if not args.yes:
@@ -453,6 +464,9 @@ def build_parser() -> argparse.ArgumentParser:
     rt.add_argument("--reason", default="misread figures")
     rt.add_argument("--no-reread", action="store_true")
     rt.set_defaults(func=cmd_retract)
+
+    sub.add_parser("tidy-quarantine", help="close review entries left open by re-reads").set_defaults(
+        func=cmd_tidy_quarantine)
 
     rd = sub.add_parser("reset-db", help="DELETE all data and recreate empty tables")
     rd.add_argument("--yes", action="store_true")

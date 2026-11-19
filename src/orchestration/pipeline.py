@@ -233,6 +233,8 @@ def process_documents(ctx: RunContext, *, include_failed: bool = False) -> None:
     for doc in docs:
         path = s.data_dir / doc["file_path"]
         set_context(report=doc["file_name"])
+        with ctx.engine.begin() as conn:  # a re-read replaces the file's earlier review entries
+            repo.supersede_quarantine(conn, doc["document_id"], "superseded: the file was read again")
         if not path.exists() and not _fetch_missing_file(doc, path, s):
             with ctx.engine.begin() as conn:
                 repo.set_document_status(conn, doc["document_id"], "parse_failed", "raw file not available on this machine")
@@ -241,7 +243,7 @@ def process_documents(ctx: RunContext, *, include_failed: bool = False) -> None:
         try:
             reports = extract_document(doc, path, alias_map)
         except ExtractionError as exc:
-            if exc.epi_year and not s.study_start_year <= exc.epi_year <= s.study_end_year:
+            if exc.epi_year and not s.study_start_year <= exc.epi_year <= s.study_end_year:  # set aside, not queued
                 with ctx.engine.begin() as conn:
                     repo.set_document_status(conn, doc["document_id"], "ignored",
                                              f"outside study period {s.study_start_year}-{s.study_end_year}")

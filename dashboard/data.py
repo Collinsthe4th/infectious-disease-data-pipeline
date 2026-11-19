@@ -205,7 +205,9 @@ def runs(limit: int = 50) -> pd.DataFrame:
 @st.cache_data(ttl=TTL)
 def health_totals() -> dict:
     """Current totals (not sums over runs, which would still count data removed since)."""
-    df = query("""SELECT (SELECT count(*) FROM ops.quarantine) AS held_back,
+    df = query("""SELECT (SELECT count(*) FROM ops.quarantine WHERE review_status = 'open') AS held_back,
+                         (SELECT count(*) FROM ops.quarantine
+                           WHERE review_status = 'open' AND scope = 'document') AS held_back_reports,
                          (SELECT count(*) FROM curated.revision_history h
                             JOIN curated.dim_source_report r ON r.report_id = h.new_report_id
                            WHERE NOT r.is_synthetic) AS revisions""")
@@ -220,6 +222,7 @@ def quarantine(limit: int = 200) -> pd.DataFrame:
              FROM ops.quarantine q
              LEFT JOIN ops.validation_rule r USING (rule_id)
              JOIN raw.documents d USING (document_id)
+            WHERE q.review_status = 'open'
             ORDER BY q.quarantined_at DESC LIMIT :n""", n=limit)
 
 
