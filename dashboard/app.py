@@ -16,7 +16,16 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import data  # noqa: E402
 import ui  # noqa: E402
-from src.analytics.severity import HIGH_CHANCE, LOW_CHANCE, MODERATE_CHANCE, NO_DATA, outbreak_chance  # noqa: E402
+import importlib  # noqa: E402
+
+import src.analytics.severity as severity  # noqa: E402
+
+# Streamlit Cloud keeps old copies of modules from outside the dashboard folder in memory after
+# an update, which caused "ImportError" once new names were added. Reload to always use the latest code.
+severity = importlib.reload(severity)
+HIGH_CHANCE, MODERATE_CHANCE, LOW_CHANCE, NO_DATA = (severity.HIGH_CHANCE, severity.MODERATE_CHANCE,
+                                                     severity.LOW_CHANCE, severity.NO_DATA)
+outbreak_chance = severity.outbreak_chance
 
 ui.page("Infectious Disease Surveillance — Nigeria",
         subtitle="Real figures from NCDC situation reports, updated automatically every week. "

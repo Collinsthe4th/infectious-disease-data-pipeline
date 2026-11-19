@@ -15,6 +15,7 @@ data/**/*
 !data/**/
 !data/**/.gitkeep
 !data/reference/*.csv
+!data/reference/*.geojson
 
 # local Airflow
 .venv-airflow/

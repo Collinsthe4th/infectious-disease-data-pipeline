@@ -19,12 +19,12 @@ from typing import Any, Mapping
 import pandas as pd
 
 from src.common.epiweek import is_valid_week, week_start
+from src.extraction import state_table_ocr
 from src.extraction.classify import Classification, classify
 from src.extraction.manual_csv import read_manual_csv
 from src.extraction.parsers import read_disease_rows, read_state_tables, read_summary
 from src.extraction.pdf_reader import NotAPdfError, PdfContent, camelot_tables, read_pdf
 from src.extraction.standardise import clean_count, clean_percent
-from src.extraction import state_table_ocr
 from src.extraction.templates import LayoutTemplate, candidate_templates
 
 log = logging.getLogger(__name__)
