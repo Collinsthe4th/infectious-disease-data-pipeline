@@ -8,7 +8,7 @@ Generated automatically by the *Demo results report* workflow. Weeks covered: 04
 
 | started_at | run_type | status | files_new | rows_extracted | rows_passed | rows_warned | rows_quarantined | revisions_detected | seconds |
 |---|---|---|---|---|---|---|---|---|---|
-| 2026-11-19 00:07 | manual | success | 13 | 10505 | 10500 | 334 | 5 | 81 | 161 |
+| 2026-11-19 09:33 | manual | success | 13 | 10505 | 10500 | 334 | 5 | 81 | 155 |
 
 
 ## 2. Data quality
