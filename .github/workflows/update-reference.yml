@@ -24,8 +24,8 @@ jobs:
       - run: python scripts/update_reference_data.py
       - name: Commit
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config user.name "Akagha Collins Chisom"
+          git config user.email "173009974+Collinsthe4th@users.noreply.github.com"
           git add data/reference
           git diff --cached --quiet && echo "no changes" && exit 0
           git commit -m "Update reference data (HDX population, state boundaries)"

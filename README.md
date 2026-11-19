@@ -120,7 +120,7 @@ One fact row = one **disease × location × epidemiological week**. The database
 │   ├── orchestration/   pipeline steps and the command-line tool
 │   └── demo/            synthetic data and NCDC-style PDF generator
 ├── astro/               Airflow project deployed to Astronomer (dags/ncdc_disease_pipeline.py)
-├── results/             results page and charts, rebuilt automatically from the demo
+├── results/             results page and charts, rebuilt from the real data after every load
 ├── dashboard/           Streamlit app (app.py + pages/)
 ├── tests/               unit/ (no database) and integration/ (PostgreSQL, end-to-end, dashboard)
 ├── data/                raw/, inbox/, quarantine/, curated/parquet/, reference/ (states + aliases)

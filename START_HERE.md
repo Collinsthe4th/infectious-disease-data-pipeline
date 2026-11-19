@@ -15,7 +15,7 @@ Every week the pipeline does five jobs, in order. That chain of jobs is what an 
 
 | I want to… | Go to |
 |---|---|
-| **See the analysed data and model results** | [`results/README.md`](results/README.md): charts and tables, rebuilt by GitHub automatically |
+| **See the analysed data and model results** | [`results/README.md`](results/README.md): charts and tables from the real NCDC data, rebuilt by GitHub after every weekly load |
 | See the interactive dashboard | Your Streamlit app (setup below) |
 | Understand what each file does | The table below |
 
