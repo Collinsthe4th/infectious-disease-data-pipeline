@@ -1,0 +1,34 @@
+name: Parser samples (unread reports)
+
+# Downloads a spread of NCDC reports the parser could not read and saves them to
+# the 'parser-samples' branch so their layouts can be studied. Read-only on the database.
+on:
+  workflow_dispatch:
+    inputs:
+      per_disease:
+        description: "Reports per disease"
+        default: "6"
+
+permissions:
+  contents: write
+
+jobs:
+  samples:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11", cache: pip }
+      - run: pip install -r requirements.txt
+      - run: python scripts/fetch_queue_samples.py parser-samples ${{ github.event.inputs.per_disease || '6' }}
+      - name: Save to the 'parser-samples' branch
+        run: |
+          git config user.name "Akagha Collins Chisom"
+          git config user.email "173009974+Collinsthe4th@users.noreply.github.com"
+          git checkout -b parser-samples
+          git add -f parser-samples
+          git commit -qm "Parser samples"
+          git push -f origin parser-samples
