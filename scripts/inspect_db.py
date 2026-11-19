@@ -14,6 +14,20 @@ from src.storage.db import get_engine  # noqa: E402
 pd.set_option("display.width", 200)
 pd.set_option("display.max_rows", 200)
 QUERIES = {
+    "Quarantine: total, unique items and repeats": """
+        SELECT scope, count(*) AS entries,
+               count(DISTINCT CASE WHEN scope = 'document' THEN document_id::text
+                                   ELSE document_id::text || '|' || COALESCE(rule_id::text, '') || '|' ||
+                                        md5(COALESCE(payload::text, failure_reason)) END) AS unique_items,
+               count(DISTINCT run_id) AS runs,
+               count(*) FILTER (WHERE review_status = 'open') AS open
+          FROM ops.quarantine GROUP BY 1 ORDER BY 1""",
+    "Quarantine entries for documents that were later read successfully": """
+        SELECT q.scope, count(*) AS entries
+          FROM ops.quarantine q JOIN raw.documents d USING (document_id)
+         WHERE d.processing_status = 'parsed' GROUP BY 1""",
+    "Sum of rows_quarantined over runs": """
+        SELECT sum(rows_quarantined) AS run_sum, count(*) AS runs FROM ops.pipeline_run_log""",
     "Largest weekly values per disease (national)": """
         SELECT * FROM (
           SELECT disease_code, week_start, epi_year, epi_week, suspected, confirmed, deaths, cum_suspected,
