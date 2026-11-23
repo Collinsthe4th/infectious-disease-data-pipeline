@@ -1,6 +1,6 @@
 # Results
 
-> **Real NCDC data, as of 19 November 2026.** All figures were read automatically from the situation reports of the Nigeria Centre for Disease Control and Prevention (NCDC) and checked by the pipeline's validation rules. The four most recent weeks may still be revised by later reports. No synthetic (demo) data is included.
+> **Real NCDC data, as of 23 November 2026.** All figures were read automatically from the situation reports of the Nigeria Centre for Disease Control and Prevention (NCDC) and checked by the pipeline's validation rules. The four most recent weeks may still be revised by later reports. No synthetic (demo) data is included.
 
 This page is rebuilt automatically after every database load, so every number below comes from the database at the time of writing. The research questions (RQ1 to RQ4) are the ones in the thesis.
 
@@ -23,12 +23,13 @@ Table 1- National figures stored for each disease
 
 ## 2. Pipeline runs (RQ1)
 
-Out of 6 recorded runs, 2 finished successfully, 4 finished partly (the run completed but at least one report could not be read or loaded) and 0 failed. A partial run still saves everything it could read, and the reports it could not read are listed for review.
+Out of 7 recorded runs, 3 finished successfully, 4 finished partly (the run completed but at least one report could not be read or loaded) and 0 failed. A partial run still saves everything it could read, and the reports it could not read are listed for review.
 
 Table 2- The ten most recent pipeline runs
 
 | Started (UTC) | Type | Status | New files | Rows read | Rows loaded | Rows flagged | Rows held back | Revisions | Seconds |
 |---|---|---|---|---|---|---|---|---|---|
+| 2026-11-23 16:00 | scheduled | success | 0 | 0 | 0 | 0 | 0 | 0 | 207 |
 | 2026-11-19 18:31 | manual | success | 0 | 1 | 0 | 0 | 1 | 0 | 272 |
 | 2026-11-19 17:31 | manual | partial | 0 | 311 | 307 | 27 | 4 | 7 | 1977 |
 | 2026-11-19 13:17 | manual | partial | 0 | 5732 | 5439 | 84 | 293 | 17 | 15154 |
@@ -185,13 +186,13 @@ Table 9- Diseases without a forecast
 
 The forecasting results can be reproduced. Every method that uses randomness (Random Forest, Gradient Boosting and XGBoost) uses a fixed random seed (42), and the weekly figures the models were trained on are saved with this page in [`results/data`](data). The settings and the code version are saved in [`settings.json`](data/settings.json). Because NCDC revises its figures and the database is updated every week, a re-run on the live database can differ, but a re-run on the saved snapshot should give the same numbers.
 
-When this page was built, I re-ran the full comparison from the snapshot without the database (`scripts/reproduce_results.py`) and compared the two accuracy tables (Table 10). The re-run used this processor: AMD EPYC 7763 64-Core Processor.
+When this page was built, I re-ran the full comparison from the snapshot without the database (`scripts/reproduce_results.py`) and compared the two accuracy tables (Table 10). The re-run used this processor: AMD EPYC 9V74 80-Core Processor.
 
 Table 10- Reproducibility check
 
 | Disease | Numbers identical | Largest MASE difference | Same ranking of methods | Same test results |
 |---|---|---|---|---|
-| Lassa fever | no | 0.25% | yes | yes |
+| Lassa fever | yes | 0.00% | yes | yes |
 
 
 Upon further testing, I re-ran the comparison on nine machines with six different processor models. On five of them (Intel Xeon Platinum 8370C and 8573C, Intel Xeon 6975P, and AMD EPYC 9V45 and 9V74) every number was identical. On the sixth (AMD EPYC 7763), Random Forest and Gradient Boosting gave slightly different numbers, because tiny rounding differences in the calculations can change where a decision tree splits. This changed MASE by at most 0.25% and did not change the ranking of the methods or the result of any Diebold-Mariano test. This means the conclusions can be reproduced on any machine, and the exact numbers on most processors.

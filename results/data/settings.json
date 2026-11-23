@@ -1,6 +1,6 @@
 {
-  "as_of": "2026-11-19",
-  "code_version": "c516687a0ea1",
+  "as_of": "2026-11-23",
+  "code_version": "b5ce370b6ab6",
   "settings": {
     "forecast_horizons": 4,
     "evaluation_weeks": 52,
