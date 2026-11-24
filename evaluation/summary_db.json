@@ -24,6 +24,12 @@
     "share_within_1pct": 0.0,
     "national_ncdc_revisions": 13
   },
+  "revisions_implied": {
+    "week_pairs": 834,
+    "with_gap_pct": 30.9,
+    "upward_pct_of_gaps": 70.5,
+    "median_abs_gap_pct_of_total": 0.66
+  },
   "alerts": {
     "seasons": 12,
     "seasons_with_alert_before_or_at_peak": 11,

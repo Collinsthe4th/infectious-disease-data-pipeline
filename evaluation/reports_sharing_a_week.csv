@@ -1,0 +1,5 @@
+disease_code,epi_year,epi_week,report_code,listing_title,listing_date,file_name,source_url
+LASSA,2021,33,NCDC-SITREP-LASSA-2021-W33-54f8a8e6,An update of Lassa fever outbreak in Nigeria for Week 34,,54f8a8e691915db4.pdf,https://ncdc.gov.ng/themes/common/files/sitreps/6e94340ea56cffc0bcb29c15518abf02.pdf
+LASSA,2021,33,NCDC-SITREP-LASSA-2021-W33-aaf36ecd,An update of Lassa fever outbreak in Nigeria for Week 33,,aaf36ecd6f426222.pdf,https://ncdc.gov.ng/themes/common/files/sitreps/b2b26b5fba7c670823ef6f8183b8fa89.pdf
+MPOX,2023,29,NCDC-SITREP-MPOX-2023-W29-1dee1b73,An update of Mpox outbreak in Nigeria for Week 20,,1dee1b73fe113677.pdf,https://ncdc.gov.ng/themes/common/files/sitreps/007fcb05d1309292c83fa5c97821b2f0.pdf
+MPOX,2023,29,NCDC-SITREP-MPOX-2023-W29-c14b059f,An update of Mpox outbreak in Nigeria for Week 29,,c14b059f42345b2a.pdf,https://ncdc.gov.ng/themes/common/files/sitreps/a7b417d1be226c11d7f92eccdf13ba82.pdf
