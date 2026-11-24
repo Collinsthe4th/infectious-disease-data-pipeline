@@ -32,7 +32,11 @@ if live.empty:
     if not hist_all.empty:
         col, _ = ui.best_series(hist_all)
         if col:
-            st.bar_chart(hist_all.set_index("week_start")[col], height=260)
+            fb = go.Figure(go.Bar(x=hist_all["week_start"], y=hist_all[col], marker_color=ui.COLOURS["observed"]))
+            ui.label_points(fb, *ui.key_points(hist_all["week_start"], hist_all[col]))
+            fb.update_layout(height=300, showlegend=False, yaxis_title=ui.label(col), xaxis_title="Week",
+                             margin={"t": 30})
+            st.plotly_chart(fb, use_container_width=True)
             st.caption(f"{ui.label(col)} reported each week, all of Nigeria.")
     st.stop()
 
@@ -69,6 +73,9 @@ if m["lower_95"].notna().any():
                     line={"width": 0}, name="Likely range (95%)", hoverinfo="skip")
 fig.add_scatter(x=m["target_week"], y=m["predicted"], name="Forecast", mode="lines+markers",
                 line={"color": ui.COLOURS["forecast"], "width": 3})
+last = hist.dropna(subset=[measure]).tail(1)
+ui.label_points(fig, last["week_start"], last[measure])
+ui.label_points(fig, m["target_week"], m["predicted"], color=ui.COLOURS["forecast"])
 fig.update_layout(height=430, legend={"orientation": "h"}, yaxis_title=f"{what.capitalize()} cases per week", xaxis_title="Week")
 st.subheader(f"{disease_name}: next four weeks — {place}")
 st.plotly_chart(fig, use_container_width=True)

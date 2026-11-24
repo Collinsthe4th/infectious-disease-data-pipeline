@@ -136,3 +136,38 @@ def best_series(df: pd.DataFrame, prefer: str | None = None) -> tuple[str | None
             return col, ("NCDC publishes only running totals for this year (monthly reports), "
                          "so the chart shows the year-to-date total instead of weekly cases.")
     return None, "No figures have been published for this selection yet."
+
+
+# --------------------------------------------------------------------------- #
+#  Data labels
+# --------------------------------------------------------------------------- #
+
+def label_points(fig, x, y, fmt: str = "{:,.0f}", position: str = "top center", color: str | None = None,
+                 row: int | None = None, col: int | None = None) -> None:
+    """Write the value above chosen points only (the latest week, the busiest week, forecast weeks).
+    Long weekly series stay readable because not every bar gets a label."""
+    xs, ys = list(x), [float(v) for v in y]
+    if not xs:
+        return
+    kwargs = {"row": row, "col": col} if row else {}
+    fig.add_scatter(x=xs, y=ys, mode="text", text=[fmt.format(v) for v in ys], textposition=position,
+                    textfont={"size": 12, "color": color, "family": FONT_STACK}, showlegend=False,
+                    hoverinfo="skip", cliponaxis=False, **kwargs)
+
+
+def key_points(dates, values) -> tuple[list, list]:
+    """The latest and the busiest point of a series (one point if they are the same week)."""
+    s = pd.Series(pd.to_numeric(pd.Series(list(values)), errors="coerce").to_numpy(), index=list(dates)).dropna()
+    if s.empty:
+        return [], []
+    picks = [s.index[-1]]
+    if s.idxmax() != s.index[-1]:
+        picks.append(s.idxmax())
+    return picks, [s[p] for p in picks]
+
+
+def label_bars(fig, fmt: str = "%{x:,}") -> None:
+    """A value label on every bar (for charts with a handful of bars)."""
+    fig.update_traces(texttemplate=fmt, textposition="outside", cliponaxis=False,
+                      textfont={"family": FONT_STACK, "size": 12})
+    fig.update_layout(margin={"r": 40})

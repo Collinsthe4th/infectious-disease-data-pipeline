@@ -258,6 +258,11 @@ if col is not None:
     if forecast is not None:
         fig.add_scatter(x=forecast["target_week"], y=forecast["predicted"], mode="lines+markers", name="Forecast",
                         line={"dash": "dash", "color": ui.COLOURS["forecast"]})
+    for _, g in long.groupby("measure"):
+        g = g.sort_values("week_start").tail(1)
+        ui.label_points(fig, g["week_start"], g["people"])
+    if forecast is not None:
+        ui.label_points(fig, forecast["target_week"], forecast["predicted"], color=ui.COLOURS["forecast"])
     fig.update_layout(legend={"orientation": "h"})
     st.plotly_chart(fig, use_container_width=True)
     if note:

@@ -85,6 +85,7 @@ with left:
     fig = px.bar(ranked.head(15), x="per_100k", y="location_name", orientation="h", color="geo_zone",
                  labels={"per_100k": "Per 100,000 people", "location_name": "", "geo_zone": "Zone"},
                  hover_data={measure: ":,"})
+    ui.label_bars(fig, "%{x:.2f}")
     fig.update_layout(yaxis={"categoryorder": "total ascending"}, height=460)
     st.plotly_chart(fig, use_container_width=True)
 with right:
@@ -106,6 +107,8 @@ if series.empty:
 else:
     fig = px.line(series, x="week_start", y=weekly_col, color="location_name", markers=True,
                   labels={"week_start": "Week", weekly_col: f"New {what} that week", "location_name": "State"})
+    ends = series.sort_values("week_start").groupby("location_name").tail(1)
+    ui.label_points(fig, ends["week_start"], ends[weekly_col])
     st.plotly_chart(fig, use_container_width=True)
     st.caption("Each point is one week's new cases as printed in that week's NCDC report.")
 

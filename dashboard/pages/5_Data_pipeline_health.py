@@ -59,8 +59,9 @@ with right:
     flags = data.flag_counts()
     if not flags.empty:
         flags["flag_type"] = flags["flag_type"].map(lambda f: ui.FLAG_LABELS.get(f, f))
-        st.plotly_chart(px.bar(flags, x="n", y="flag_type", orientation="h", height=300,
-                               labels={"n": "Rows", "flag_type": ""}), use_container_width=True)
+        fl = px.bar(flags, x="n", y="flag_type", orientation="h", height=300, labels={"n": "Rows", "flag_type": ""})
+        ui.label_bars(fl)
+        st.plotly_chart(fl, use_container_width=True)
     else:
         st.caption("No warnings.")
 

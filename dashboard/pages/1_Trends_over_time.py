@@ -46,6 +46,10 @@ else:
         s = stl[stl["week_start"].between(df["week_start"].min(), df["week_start"].max())]
         fig.add_scatter(x=s["week_start"], y=s["trend"], name="Long-term trend",
                         line={"color": ui.COLOURS["trend"], "width": 3})
+xs, ys = ui.key_points(df["week_start"], values)
+if measure.startswith("cum_"):
+    xs, ys = xs[:1], ys[:1]  # a running total: only the latest value is worth labelling
+ui.label_points(fig, xs, ys)
 fig.update_layout(height=420, legend={"orientation": "h"}, xaxis_title="Week", yaxis_title="Number of people")
 st.subheader(f"{name} — {place}")
 st.plotly_chart(fig, use_container_width=True)
