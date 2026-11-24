@@ -1,0 +1,9 @@
+disease,reports,passed_all_rules,warnings_only,had_figures_held_back,passed_pct
+CHOLERA,77,51,25,1,66.2
+CSM,10,8,0,2,80.0
+DIPHTHERIA,14,13,1,0,92.9
+LASSA,271,183,35,53,67.5
+MEASLES,16,14,2,0,87.5
+MPOX,113,112,0,1,99.1
+YELLOW_FEVER,40,40,0,0,100.0
+ALL,541,421,63,57,77.8

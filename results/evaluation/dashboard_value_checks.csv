@@ -1,0 +1,5 @@
+card,field,shown,database,match
+Lassa fever,suspected,179,179,True
+Lassa fever,confirmed,13,13,True
+Lassa fever,deaths,4,4,True
+Data pipeline health,waiting for review,432,432,True

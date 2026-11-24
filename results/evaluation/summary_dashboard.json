@@ -1,0 +1,9 @@
+{
+  "cold_start_s": 7.9,
+  "warm_median_s": 0.94,
+  "warm_p90_s": 1.67,
+  "warm_under_3s_pct": 100.0,
+  "values_checked": 4,
+  "values_matching": 4,
+  "week": "44/2026"
+}
