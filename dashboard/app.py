@@ -30,7 +30,7 @@ import src.analytics.series as series_mod  # noqa: E402
 
 series_mod = importlib.reload(series_mod)
 
-ui.page("Infectious Disease Surveillance — Nigeria",
+ui.page("Infectious Disease Surveillance in Nigeria",
         subtitle="Real figures from NCDC situation reports, updated automatically every week. "
                  "The four most recent weeks may still change.")
 
@@ -109,7 +109,7 @@ has_figure = weekly.dropna(subset=["suspected", "confirmed", "deaths"], how="all
 current = has_figure["week_start"].max() if not has_figure.empty else weekly["week_start"].max()
 cw = weekly[weekly["week_start"] == current]
 ew, ey = int(cw["epi_week"].iloc[0]), int(cw["epi_year"].iloc[0])
-st.subheader(f"This week's reports — week {ew}, {ey}")
+st.subheader(f"This week's reports: week {ew}, {ey}")
 st.caption(f"Week of {current:%d %b} – {current + pd.Timedelta(days=6):%d %b %Y}, the newest week NCDC has published "
            "(reports come out a few weeks after the week they describe). Figures for all of Nigeria; "
            "the line shows the last 12 reported weeks.")
