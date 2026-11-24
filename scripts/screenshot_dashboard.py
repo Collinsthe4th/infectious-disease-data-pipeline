@@ -27,5 +27,11 @@ with sync_playwright() as p:
                 loaded = page.evaluate("() => document.fonts.check('16px \"Atkinson Hyperlegible Next\"')")
                 print(f"{scheme} {label} {name}: font={font!r} loaded={loaded}")
                 page.screenshot(path=str(out / f"{scheme}_{label}_{name}.png"), full_page=True)
+                for css, part in ((".rk", "risk_panel"), (".rs", "risk_tiles"), (".cards", "report_cards")):
+                    el = page.locator(css).first
+                    if name == "overview" and el.count():
+                        el.scroll_into_view_if_needed()
+                        page.wait_for_timeout(500)
+                        el.screenshot(path=str(out / f"{scheme}_{label}_{part}.png"))
             page.close()
     browser.close()

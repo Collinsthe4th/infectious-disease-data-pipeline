@@ -26,6 +26,7 @@ severity = importlib.reload(severity)
 HIGH_CHANCE, MODERATE_CHANCE, LOW_CHANCE, NO_DATA = (severity.HIGH_CHANCE, severity.MODERATE_CHANCE,
                                                      severity.LOW_CHANCE, severity.NO_DATA)
 outbreak_chance = severity.outbreak_chance
+SEP = '<span class="sep" aria-hidden="true">\u2022</span>'  # a clear, bold dot between items
 import src.analytics.series as series_mod  # noqa: E402
 
 series_mod = importlib.reload(series_mod)
@@ -63,8 +64,11 @@ for c, (ch, fc, _) in sorted(assessed.items(), key=lambda kv: (order[kv[1][0].le
     sub = (f"last weekly report {last['week_start'].max():%d %b %Y}" if not last.empty else "running totals only")
     tiles.append(f'<div class="rs-tile" style="--t:{TONE[ch.level]}"><div class="rs-name">{names_by_code[c]}</div>'
                  f'<div class="rs-level">{SHORT[ch.level]}</div><div class="rs-sub">{sub}'
-                 f'{" · forecast" if fc is not None else ""}</div></div>')
+                 f'{(SEP + "forecast") if fc is not None else ""}</div></div>')
 st.subheader("Chance of an outbreak: all seven diseases")
+st.markdown("<style>.rs, .rs *, .cards, .cards *{font-family:" + ui.FONT_STACK + "}"
+            ".sep{font-weight:900;font-size:1.2em;line-height:1;vertical-align:-.08em;margin:0 .4em}</style>",
+            unsafe_allow_html=True)
 st.markdown("""<style>
 .rs{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin:4px 0 4px}
 .rs-tile{border:3px solid var(--t);border-radius:10px;padding:9px 12px;
@@ -132,13 +136,13 @@ for disease, group in weekly[weekly["disease_name"].isin(cw["disease_name"])].gr
         arrow = "▲" if d > 0 else "▼" if d < 0 else "■"
         chg = f"{arrow} {abs(d):,} vs previous week" if d else "■ same as previous week"
     colour = {"up": "#e5484d", "down": "#30a46c", "flat": "#8b8d98"}[cls]
-    others = " · ".join(f"{ui.label(c)} {int(now[c]):,}" for c in ("suspected", "confirmed", "deaths")
+    others = SEP.join(f"{ui.label(c)} {int(now[c]):,}" for c in ("suspected", "confirmed", "deaths")
                         if c != col and pd.notna(now.get(c)))
     cards.append(
         f'<div class="card"><div class="name">{disease}</div>'
         f'<div class="row"><div><div class="num">{int(now[col]):,}</div><div class="what">{ui.label(col).lower()}</div>'
         f'<div class="chg {cls}">{chg}</div></div>{sparkline(g[col].tail(12).astype(float).tolist(), colour)}</div>'
-        f'<div class="more">{others}{" · may still change" if now["is_provisional"] else ""}</div></div>')
+        f'<div class="more">{others}{(SEP + "may still change") if now["is_provisional"] else ""}</div></div>')
 
 if cards:
     st.markdown(CARD_CSS + '<div class="cards">' + "".join(cards) + "</div>", unsafe_allow_html=True)
@@ -154,7 +158,7 @@ for disease, group in weekly.groupby("disease_name", sort=True):
         continue
     now = g.iloc[-1]
     ago = (current - now["week_start"]).days // 7
-    when = f"week of {now['week_start']:%d %b %Y} · {ago} week{'s' if ago != 1 else ''} before this week"
+    when = f"week of {now['week_start']:%d %b %Y}{SEP}{ago} week{'s' if ago != 1 else ''} before this week"
     others.append(
         f'<div class="card muted"><div class="name">{disease}</div>'
         f'<div class="row"><div><div class="num">{int(now[col]):,}</div><div class="what">{ui.label(col).lower()}</div>'
@@ -196,6 +200,8 @@ summary = chance.reasons[0][0].upper() + chance.reasons[0][1:] if chance.level =
 }[chance.level]
 
 st.markdown(f"""<style>
+.rk, .rk *{{font-family:{ui.FONT_STACK}}}
+.rk .sep{{font-weight:900;font-size:1.25em;line-height:1;vertical-align:-.08em;margin:0 .45em;color:var(--tone);opacity:1}}
 .rk{{--tone:{tone};border:3px solid var(--tone);border-radius:12px;overflow:hidden;margin:4px 0 6px}}
 .rk-top{{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:14px;
   padding:14px 18px;background:color-mix(in srgb,var(--tone) 14%,transparent)}}
@@ -214,7 +220,7 @@ st.markdown(f"""<style>
 </style>
 <div class="rk" role="region" aria-label="Chance of an outbreak, {name}">
   <div class="rk-top">
-    <div><div class="rk-kicker">Chance of an outbreak · {name}</div>
+    <div><div class="rk-kicker">Chance of an outbreak{SEP}{name}</div>
       <div class="rk-level">{SHORT[chance.level]}{" chance" if chance.level != NO_DATA else ""}</div></div>
     <div class="rk-scale" aria-hidden="true">{steps}</div>
   </div>
@@ -223,7 +229,7 @@ st.markdown(f"""<style>
 </div>""", unsafe_allow_html=True)
 st.caption(("" if forecast is not None else "No forecast for this disease yet (it needs about two years of regular "
             "weekly reports; see the Forecasts page), so this uses the alert checks and recent weeks only. ")
-           + "A research indicator to show where to look first — not an official NCDC alert.")
+           + "A research indicator to show where to look first. It is not an official NCDC alert.")
 with st.expander("How is this decided?"):
     st.markdown("""
 | Level | Rule |
