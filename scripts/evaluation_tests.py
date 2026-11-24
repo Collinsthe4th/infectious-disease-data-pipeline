@@ -139,6 +139,54 @@ def cmd_db(out: Path) -> dict:
         "national_ncdc_revisions": int((ncdc["admin_level"] == 0).sum()) if len(ncdc) else 0,
     }
 
+    # Revisions implied by the year-to-date totals --------------------------------
+    # NCDC reports only print the current week, so a later report rarely restates an earlier week. But each
+    # report also prints the year-to-date total. If NCDC changed earlier weeks, the new total differs from
+    # last week's total plus this week's new cases: gap = cum_t - cum_(t-1) - new_t.
+    ytd = q("""SELECT disease_code, epi_year, epi_week, week_start, suspected, confirmed, deaths,
+                      cum_suspected, cum_confirmed, cum_deaths, is_derived_from_cumulative
+                 FROM curated.v_weekly_cases WHERE admin_level = 0 AND NOT is_synthetic
+                ORDER BY disease_code, week_start""")
+    gaps = []
+    for (code, year), g in ytd.groupby(["disease_code", "epi_year"]):
+        g = g.sort_values("epi_week")
+        for m in ("suspected", "confirmed", "deaths"):
+            prev = g[f"cum_{m}"].shift()
+            ok = (g["epi_week"].diff() == 1) & g[m].notna() & g[f"cum_{m}"].notna() & prev.notna() \
+                & ~g["is_derived_from_cumulative"]
+            for r, pv in zip(g[ok].itertuples(), prev[ok]):
+                gap = int(getattr(r, f"cum_{m}") - pv - getattr(r, m))
+                gaps.append({"disease": code, "epi_year": int(year), "epi_week": int(r.epi_week), "measure": m,
+                             "previous_total": int(pv), "new_this_week": int(getattr(r, m)),
+                             "total_now": int(getattr(r, f"cum_{m}")), "gap": gap,
+                             "gap_pct_of_total": round(100 * gap / pv, 2) if pv else None})
+    gaps = pd.DataFrame(gaps)
+    save(out, "revisions_implied_weekly", gaps)
+    if len(gaps):
+        gs = gaps.groupby(["disease", "measure"]).agg(
+            week_pairs=("gap", "size"), with_gap=("gap", lambda x: int((x != 0).sum())),
+            upward=("gap", lambda x: int((x > 0).sum())), downward=("gap", lambda x: int((x < 0).sum())),
+            median_abs_gap=("gap", lambda x: float(x[x != 0].abs().median()) if (x != 0).any() else 0.0),
+            median_abs_gap_pct=("gap_pct_of_total", lambda x: float(x[x != 0].abs().median()) if (x != 0).any() else 0.0),
+            max_abs_gap=("gap", lambda x: int(x.abs().max()))).reset_index()
+        gs["with_gap_pct"] = (100 * gs["with_gap"] / gs["week_pairs"]).round(1)
+        save(out, "revisions_implied_summary", gs)
+        summary["revisions_implied"] = {
+            "week_pairs": int(len(gaps)), "with_gap_pct": round(100 * float((gaps["gap"] != 0).mean()), 1),
+            "upward_pct_of_gaps": round(100 * float((gaps["gap"] > 0).sum() / max((gaps["gap"] != 0).sum(), 1)), 1),
+            "median_abs_gap_pct_of_total": round(float(gaps.loc[gaps["gap"] != 0, "gap_pct_of_total"].abs().median()), 2)}
+
+    # Two reports for the same disease and week (one of them is probably labelled with the wrong week)
+    dup = q("""SELECT d.disease_code, w.epi_year, w.epi_week, r.report_code, doc.listing_title, doc.listing_date,
+                      doc.file_name, doc.source_url
+                 FROM curated.dim_source_report r JOIN curated.dim_disease d USING (disease_id)
+                 JOIN curated.dim_epi_week w USING (week_id) JOIN raw.documents doc USING (document_id)
+                WHERE NOT r.is_synthetic AND (r.disease_id, r.week_id) IN (
+                      SELECT disease_id, week_id FROM curated.dim_source_report WHERE NOT is_synthetic
+                       GROUP BY 1, 2 HAVING count(*) > 1)
+                ORDER BY 1, 2, 3, 4""")
+    save(out, "reports_sharing_a_week", dup)
+
     # Alerts against each season's peak ---------------------------------------
     nat = q("""SELECT disease_code, week_id, week_start, epi_year, suspected, confirmed
                  FROM curated.v_weekly_cases WHERE admin_level = 0 AND NOT is_synthetic ORDER BY 1, 3""")
@@ -287,13 +335,6 @@ def _wait_rendered(frame, timeout_s: float = 90) -> float:
     return time.perf_counter() - t0
 
 
-def _app_frame(page):
-    for f in page.frames:
-        if "/~/+/" in f.url:
-            return f
-    return page.main_frame
-
-
 def cmd_dashboard(out: Path, base: str, repeats: int = 5) -> dict:
     from playwright.sync_api import sync_playwright
 
@@ -305,22 +346,33 @@ def cmd_dashboard(out: Path, base: str, repeats: int = 5) -> dict:
         # Wake the app (Streamlit Community Cloud puts idle apps to sleep) and record that first load.
         t0 = time.perf_counter()
         page.goto(base, wait_until="domcontentloaded", timeout=300_000)
+        page.wait_for_timeout(5000)
         wake = page.get_by_role("button", name=re.compile("get this app back up", re.I))
         if wake.count():
             wake.first.click()
-        _wait_rendered(_app_frame(page), timeout_s=300)
-        cold = time.perf_counter() - t0
+            page.wait_for_timeout(5000)
+        cold = None
+        for _ in range(30):  # up to ~5 minutes while the app starts
+            try:
+                page.goto(f"{base}/~/+/", wait_until="domcontentloaded", timeout=60_000)
+                _wait_rendered(page.main_frame, timeout_s=30)
+                cold = time.perf_counter() - t0
+                break
+            except Exception:
+                page.screenshot(path=str(out / "dashboard_wait.png"))
+        if cold is None:
+            raise SystemExit("The dashboard did not start within 5 minutes (see dashboard_wait.png).")
         for name, path in PAGES.items():
             for k in range(repeats + 1):  # the first visit of each page warms the cache and is not counted
                 t0 = time.perf_counter()
                 page.goto(f"{base}/~/+/{path}", wait_until="domcontentloaded", timeout=120_000)
-                secs = _wait_rendered(_app_frame(page)) + 0  # time after navigation
+                secs = _wait_rendered(page.main_frame)
                 total = time.perf_counter() - t0
                 timings.append({"page": name, "visit": k, "warm_up": k == 0, "seconds": round(total, 2),
                                 "render_seconds": round(secs, 2)})
                 print(f"{name} visit {k}: {total:.2f}s")
             if name == "overview":
-                f = _app_frame(page)
+                f = page.main_frame
                 for c in f.locator(".cards .card:not(.muted)").all():
                     cards.append({"name": c.locator(".name").inner_text().strip(),
                                   "num": c.locator(".num").inner_text().strip(),
@@ -328,7 +380,7 @@ def cmd_dashboard(out: Path, base: str, repeats: int = 5) -> dict:
                                   "more": c.locator(".more").inner_text().strip()})
                 week_txt = f.get_by_text(re.compile(r"This week's reports: week \d+, \d{4}")).first.inner_text()
             if name == "pipeline_health":
-                f = _app_frame(page)
+                f = page.main_frame
                 metric = f.locator('[data-testid="stMetric"]', has_text="Waiting for review").first
                 waiting = metric.locator('[data-testid="stMetricValue"]').inner_text().strip()
         browser.close()

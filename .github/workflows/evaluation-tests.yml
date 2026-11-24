@@ -11,7 +11,7 @@ on:
         description: "Which tests"
         type: choice
         default: all
-        options: [all, db, sample, dashboard]
+        options: [all, db, sample, dashboard, "db,dashboard"]
       sample_size:
         description: "Reports in the extraction audit sample"
         default: "30"
@@ -33,21 +33,22 @@ jobs:
         with: { python-version: "3.11", cache: pip }
       - run: pip install -r requirements.txt playwright && python -m playwright install --with-deps chromium > /dev/null
       - name: Database analyses
-        if: env.WHAT == 'all' || env.WHAT == 'db'
+        if: env.WHAT == 'all' || contains(env.WHAT, 'db')
         run: python scripts/evaluation_tests.py db evaluation
       - name: Extraction audit sample
-        if: env.WHAT == 'all' || env.WHAT == 'sample'
+        if: env.WHAT == 'all' || contains(env.WHAT, 'sample')
         run: python scripts/evaluation_tests.py sample evaluation/extraction ${{ github.event.inputs.sample_size || '30' }}
       - name: Live dashboard
-        if: env.WHAT == 'all' || env.WHAT == 'dashboard'
+        if: env.WHAT == 'all' || contains(env.WHAT, 'dashboard')
         run: python scripts/evaluation_tests.py dashboard evaluation/dashboard "$APP_URL"
       - name: Save to the 'evaluation-results' branch
         if: always()
         run: |
           git config user.name "Akagha Collins Chisom"
           git config user.email "173009974+Collinsthe4th@users.noreply.github.com"
-          git fetch -q origin evaluation-results && git checkout -q -B evaluation-results origin/evaluation-results \
-            || git checkout -q --orphan evaluation-results
-          git rm -rq --cached . > /dev/null 2>&1 || true
+          mv evaluation /tmp/evaluation-new
+          if git fetch -q origin evaluation-results; then git checkout -q -B evaluation-results FETCH_HEAD
+          else git checkout -q --orphan evaluation-results && git rm -rqf --cached . && git clean -fdxq -e .git; fi
+          mkdir -p evaluation && cp -r /tmp/evaluation-new/. evaluation/   # new results replace the same files
           git add -f evaluation
           git commit -qm "Saved evaluation results ($WHAT, $(date -u +%F))" && git push -q origin evaluation-results
