@@ -1,0 +1,13 @@
+disease,year,measure,weeks,peak_week,peak_value,alert_weeks,first_alert_week,weeks_before_peak,busy_weeks,busy_weeks_with_alert,alerts_in_busy_weeks,alerts_in_quiet_weeks
+CHOLERA,2021,suspected,25,2021-08-16,3098,6,2021-07-05,6,6,3,3,3
+CHOLERA,2022,suspected,13,2022-09-26,1006,8,2022-05-02,21,1,1,1,7
+CHOLERA,2024,suspected,22,2024-07-22,117,8,2024-06-03,7,1,1,1,7
+LASSA,2021,confirmed,45,2021-02-22,34,6,2021-02-22,0,8,3,3,3
+LASSA,2022,confirmed,30,2022-02-14,91,11,2022-01-03,6,8,8,8,3
+LASSA,2023,confirmed,41,2023-01-23,117,13,2023-01-23,0,5,5,5,8
+LASSA,2024,confirmed,26,2024-02-05,83,8,2024-01-01,5,5,4,4,4
+LASSA,2025,confirmed,51,2025-01-06,89,11,2024-12-30,1,7,4,4,7
+LASSA,2026,confirmed,44,2026-02-09,83,7,2026-01-26,2,7,6,6,1
+MPOX,2022,confirmed,26,2022-09-19,56,9,2022-07-04,11,8,4,4,5
+MPOX,2023,confirmed,47,2023-01-16,11,3,2023-11-20,-44,5,1,1,2
+MPOX,2024,confirmed,11,2024-09-02,12,5,2024-08-19,2,8,4,4,1

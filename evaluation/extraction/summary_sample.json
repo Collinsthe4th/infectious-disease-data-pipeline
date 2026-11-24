@@ -1,0 +1,13 @@
+{
+  "reports": 30,
+  "fields": 122,
+  "by_disease": {
+    "LASSA": 5,
+    "MPOX": 5,
+    "CHOLERA": 4,
+    "CSM": 4,
+    "DIPHTHERIA": 4,
+    "MEASLES": 4,
+    "YELLOW_FEVER": 4
+  }
+}

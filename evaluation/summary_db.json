@@ -1,0 +1,34 @@
+{
+  "routine_runs": {
+    "n": 1,
+    "completed_pct": 100.0,
+    "under_15_min_pct": 100.0,
+    "median_min": 3.45,
+    "max_min": 3.45
+  },
+  "data_quality": {
+    "disease": "ALL",
+    "reports": 541,
+    "passed_all_rules": 421,
+    "warnings_only": 63,
+    "had_figures_held_back": 57,
+    "passed_pct": 77.8
+  },
+  "revisions": {
+    "all_changes": 29,
+    "own_rereads": 16,
+    "ncdc_revisions": 13,
+    "facts_total": 5754,
+    "ncdc_revised_weeks_and_places": 1,
+    "median_rel_pct": 26.26,
+    "share_within_1pct": 0.0,
+    "national_ncdc_revisions": 13
+  },
+  "alerts": {
+    "seasons": 12,
+    "seasons_with_alert_before_or_at_peak": 11,
+    "median_weeks_before_peak": 3.5,
+    "share_of_alerts_in_busy_weeks_pct": 46.3,
+    "share_of_busy_weeks_flagged_pct": 63.8
+  }
+}

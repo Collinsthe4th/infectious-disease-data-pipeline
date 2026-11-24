@@ -1,0 +1,6 @@
+disease_code,field_name,revisions,median_abs_change,median_rel_pct,max_rel_pct,median_lag_weeks,upward
+LASSA,confirmed,3,7.0,77.78,350.0,0.0,1
+LASSA,cum_confirmed,3,9.0,2.47,2.53,0.0,1
+LASSA,cum_deaths,1,26.0,26.26,26.26,0.0,0
+LASSA,cum_suspected,3,83.0,2.89,2.97,0.0,1
+LASSA,suspected,3,25.0,30.12,43.1,0.0,1
