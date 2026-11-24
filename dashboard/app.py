@@ -101,6 +101,8 @@ CARD_CSS = """<style>
 .card{border:3px solid rgba(128,128,128,.35);border-radius:14px;padding:14px 16px;background:rgba(128,128,128,.07)}
 .card .name{font-size:.95rem;font-weight:600}
 .card .row{display:flex;justify-content:space-between;align-items:flex-end;margin-top:4px}
+.card .row > div{flex:1;min-width:0}
+.card .row svg{flex-shrink:0;margin-left:10px}
 .card .num{font-size:2rem;font-weight:700;line-height:1.1}
 .card .what{font-size:.8rem;opacity:.75}
 .card .chg{font-size:.85rem;font-weight:600;margin-top:2px}
