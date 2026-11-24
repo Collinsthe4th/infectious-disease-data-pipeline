@@ -7,7 +7,9 @@ name: Load data into Supabase
 
 on:
   schedule:
-    - cron: "17 5 * * 1"   # every Monday ~06:17 Nigeria time: the normal weekly run (free, always on)
+    - cron: "17 5 * * 1"       # every Monday ~06:17 Nigeria time: the normal weekly run (free, always on)
+    - cron: "17 5 * * 0,2-6"   # the other six days: a quick check for new reports (no analytics), used for
+                               # the 30-day reliability test in Chapter 4
   workflow_dispatch:
     inputs:
       what:
@@ -63,12 +65,16 @@ jobs:
           python -m src.orchestration.cli --plain-logs reset-db --yes
       - name: Load
         run: |
-          case "${{ github.event.inputs.what || 'real-weekly' }}" in
+          what="${{ github.event.inputs.what || 'real-weekly' }}"
+          if [ "${{ github.event.schedule }}" = "17 5 * * 0,2-6" ]; then what=daily-check; fi
+          trig=cli; if [ "${{ github.event_name }}" = "schedule" ]; then trig=cron; fi
+          case "$what" in
+            daily-check)    python -m src.orchestration.cli --plain-logs --trigger $trig run --mode daily_check ;;
             RESET-then-real-trial)    python -m src.orchestration.cli --plain-logs backfill --max-files 3 ;;
             RESET-then-real-backfill) python -m src.orchestration.cli --plain-logs backfill ;;
             demo)           python -m src.orchestration.cli --plain-logs demo ;;
             real-trial)     python -m src.orchestration.cli --plain-logs backfill --max-files 3 ;;
-            real-weekly)    python -m src.orchestration.cli --plain-logs run ;;
+            real-weekly)    python -m src.orchestration.cli --plain-logs --trigger $trig run ;;
             real-backfill)  python -m src.orchestration.cli --plain-logs backfill ;;
             analytics-only) python -m src.orchestration.cli --plain-logs analytics ;;
             reread-lassa)   python -m src.orchestration.cli --plain-logs reread --disease LASSA --reason "state table OCR" \
