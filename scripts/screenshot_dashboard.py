@@ -24,7 +24,7 @@ with sync_playwright() as p:
                 page.goto(f"{base}/{path}", wait_until="networkidle")
                 page.wait_for_timeout(6000)  # let Streamlit finish rendering and the web font load
                 font = page.evaluate("() => getComputedStyle(document.querySelector('h1') || document.body).fontFamily")
-                loaded = page.evaluate("() => document.fonts.check('16px \"Atkinson Hyperlegible Next\"')")
+                loaded = page.evaluate("() => document.fonts.check('16px \"Nunito\"')")
                 print(f"{scheme} {label} {name}: font={font!r} loaded={loaded}")
                 page.screenshot(path=str(out / f"{scheme}_{label}_{name}.png"), full_page=True)
                 for css, part in ((".rk", "risk_panel"), (".rs", "risk_tiles"), (".cards", "report_cards")):
