@@ -64,10 +64,10 @@ for c, (ch, fc, _) in sorted(assessed.items(), key=lambda kv: (order[kv[1][0].le
     tiles.append(f'<div class="rs-tile" style="--t:{TONE[ch.level]}"><div class="rs-name">{names_by_code[c]}</div>'
                  f'<div class="rs-level">{SHORT[ch.level]}</div><div class="rs-sub">{sub}'
                  f'{" · forecast" if fc is not None else ""}</div></div>')
-st.subheader("Chance of an outbreak — all seven diseases")
+st.subheader("Chance of an outbreak: all seven diseases")
 st.markdown("""<style>
 .rs{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin:4px 0 4px}
-.rs-tile{border:1px solid rgba(128,128,128,.3);border-top:4px solid var(--t);border-radius:10px;padding:9px 12px;
+.rs-tile{border:3px solid var(--t);border-radius:10px;padding:9px 12px;
   background:color-mix(in srgb,var(--t) 8%,transparent)}
 .rs-name{font-size:.85rem;font-weight:600}
 .rs-level{font-size:1.15rem;font-weight:750;color:var(--t)}
@@ -94,7 +94,7 @@ def sparkline(values: list[float], colour: str, width: int = 120, height: int = 
 
 CARD_CSS = """<style>
 .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px;margin:6px 0 10px}
-.card{border:1px solid rgba(128,128,128,.35);border-radius:14px;padding:14px 16px;background:rgba(128,128,128,.07)}
+.card{border:3px solid rgba(128,128,128,.35);border-radius:14px;padding:14px 16px;background:rgba(128,128,128,.07)}
 .card .name{font-size:.95rem;font-weight:600}
 .card .row{display:flex;justify-content:space-between;align-items:flex-end;margin-top:4px}
 .card .num{font-size:2rem;font-weight:700;line-height:1.1}
@@ -196,9 +196,9 @@ summary = chance.reasons[0][0].upper() + chance.reasons[0][1:] if chance.level =
 }[chance.level]
 
 st.markdown(f"""<style>
-.rk{{--tone:{tone};border:1px solid rgba(128,128,128,.28);border-radius:12px;overflow:hidden;margin:4px 0 6px}}
+.rk{{--tone:{tone};border:3px solid var(--tone);border-radius:12px;overflow:hidden;margin:4px 0 6px}}
 .rk-top{{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:14px;
-  padding:14px 18px;background:color-mix(in srgb,var(--tone) 14%,transparent);border-bottom:3px solid var(--tone)}}
+  padding:14px 18px;background:color-mix(in srgb,var(--tone) 14%,transparent)}}
 .rk-kicker{{font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;opacity:.7}}
 .rk-level{{font-size:1.7rem;font-weight:750;color:var(--tone);line-height:1.15}}
 .rk-scale{{display:flex;gap:4px}}

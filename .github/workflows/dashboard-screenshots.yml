@@ -1,0 +1,42 @@
+name: Dashboard screenshots
+
+# Starts the dashboard on the synthetic demo data in a throwaway database, takes screenshots in a
+# real browser (dark and light, desktop and mobile) and saves them to the 'ui-screenshots' branch.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  screenshots:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env: { POSTGRES_USER: demo, POSTGRES_PASSWORD: demo, POSTGRES_DB: demo }
+        ports: ["5432:5432"]
+        options: --health-cmd "pg_isready -U demo" --health-interval 5s --health-timeout 5s --health-retries 20
+    env:
+      DATABASE_URL: postgresql+psycopg://demo:demo@localhost:5432/demo
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11", cache: pip }
+      - run: pip install -r requirements.txt playwright && python -m playwright install --with-deps chromium > /dev/null
+      - name: Load the synthetic demo
+        run: python -m src.orchestration.cli --plain-logs demo --no-forecast
+      - name: Start the dashboard and take screenshots
+        run: |
+          streamlit run dashboard/app.py --server.headless true --server.port 8501 > streamlit.log 2>&1 &
+          for i in $(seq 1 60); do curl -sf http://localhost:8501/_stcore/health && break; sleep 2; done
+          python scripts/screenshot_dashboard.py http://localhost:8501 ui-screenshots
+      - name: Save to the 'ui-screenshots' branch
+        run: |
+          git config user.name "Akagha Collins Chisom"
+          git config user.email "173009974+Collinsthe4th@users.noreply.github.com"
+          git checkout -b ui-screenshots
+          git add -f ui-screenshots
+          git commit -qm "Saved dashboard screenshots"
+          git push -f origin ui-screenshots

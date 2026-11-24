@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import pandas as pd
+import plotly.io as pio
 import streamlit as st
 
 import data
@@ -59,8 +60,29 @@ def friendly(df: pd.DataFrame) -> pd.DataFrame:
     return df.rename(columns={c: label(c) for c in df.columns})
 
 
+# Atkinson Hyperlegible Next (Braille Institute, SIL Open Font License): a clean sans-serif designed so that
+# similar characters (I l 1, 0 O) are easy to tell apart, which suits a page full of figures.
+FONT = "Atkinson Hyperlegible Next"
+FONT_STACK = f"'{FONT}', 'Segoe UI', system-ui, sans-serif"
+FONT_CSS = f"""<style>
+@import url('https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;500;600;700;800&display=swap');
+html, body, .stApp, h1, h2, h3, h4, h5, h6, p, li, label, button, input, textarea, select, table, th, td,
+.stMarkdown, .stCaption, [data-testid="stMetricValue"], [data-testid="stMetricLabel"], [data-testid="stMetricDelta"],
+[data-testid="stSidebarNav"] span, [data-testid="stExpander"] summary p, [data-baseweb="select"] div {{
+  font-family: {FONT_STACK} !important;
+}}
+[data-testid="stMetricValue"] {{ font-variant-numeric: tabular-nums; }}
+</style>"""
+
+# Charts use the same font.
+pio.templates["surveillance"] = pio.templates["plotly"]
+pio.templates["surveillance"].layout.font.family = FONT_STACK
+pio.templates.default = "plotly+surveillance"
+
+
 def page(title: str, icon: str = "🦠", subtitle: str | None = None) -> None:
     st.set_page_config(page_title=f"{title} · Nigeria Disease Surveillance", page_icon=icon, layout="wide")
+    st.markdown(FONT_CSS, unsafe_allow_html=True)
     st.title(title)
     if subtitle:
         st.caption(subtitle)
