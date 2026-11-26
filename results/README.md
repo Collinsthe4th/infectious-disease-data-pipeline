@@ -23,12 +23,13 @@ Table 1- National figures stored for each disease
 
 ## 2. Pipeline runs (RQ1)
 
-Out of 9 recorded runs, 5 finished successfully, 4 finished partly (the run completed but at least one report could not be read or loaded) and 0 failed. A partial run still saves everything it could read, and the reports it could not read are listed for review.
+Out of 10 recorded runs, 6 finished successfully, 4 finished partly (the run completed but at least one report could not be read or loaded) and 0 failed. A partial run still saves everything it could read, and the reports it could not read are listed for review.
 
 Table 2- The ten most recent pipeline runs
 
 | Started (UTC) | Type | Status | New files | Rows read | Rows loaded | Rows flagged | Rows held back | Revisions | Seconds |
 |---|---|---|---|---|---|---|---|---|---|
+| 2026-11-26 15:18 | daily_check | success | 0 | 0 | 0 | 0 | 0 | 0 | 81 |
 | 2026-11-26 08:50 | manual | success | 0 | 0 | 0 | 0 | 0 | 0 | 206 |
 | 2026-11-25 15:38 | daily_check | success | 2 | 39 | 39 | 0 | 0 | 0 | 174 |
 | 2026-11-23 16:00 | scheduled | success | 0 | 0 | 0 | 0 | 0 | 0 | 207 |
@@ -188,7 +189,7 @@ Table 9- Diseases without a forecast
 
 The forecasting results can be reproduced. Every method that uses randomness (Random Forest, Gradient Boosting and XGBoost) uses a fixed random seed (42), and the weekly figures the models were trained on are saved with this page in [`results/data`](data). The settings and the code version are saved in [`settings.json`](data/settings.json). Because NCDC revises its figures and the database is updated every week, a re-run on the live database can differ, but a re-run on the saved snapshot should give the same numbers.
 
-When this page was built, I re-ran the full comparison from the snapshot without the database (`scripts/reproduce_results.py`) and compared the two accuracy tables (Table 10). The re-run used this processor: AMD EPYC 9V45 96-Core Processor.
+When this page was built, I re-ran the full comparison from the snapshot without the database (`scripts/reproduce_results.py`) and compared the two accuracy tables (Table 10). The re-run used this processor: INTEL(R) XEON(R) PLATINUM 8573C.
 
 Table 10- Reproducibility check
 
