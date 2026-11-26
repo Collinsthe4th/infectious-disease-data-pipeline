@@ -478,7 +478,9 @@ def run_pipeline(
         ingest_inbox(ctx)
         process_documents(ctx, include_failed=(mode == "backfill"))
         post_load(ctx)
-        if run_analytics_step and mode != "daily_check":
+        # A daily check skips the analytics when nothing new arrived. When it did load new figures, the
+        # trends, alerts and forecasts are refreshed too, so they always match the data they describe.
+        if run_analytics_step and (mode != "daily_check" or ctx.stats.rows_passed > 0):
             analytics(ctx, forecast=forecast)
         export_parquet(ctx)
     except Exception as exc:
