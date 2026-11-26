@@ -1,12 +1,12 @@
 # Results
 
-> **Real NCDC data, as of 23 November 2026.** All figures were read automatically from the situation reports of the Nigeria Centre for Disease Control and Prevention (NCDC) and checked by the pipeline's validation rules. The four most recent weeks may still be revised by later reports. No synthetic (demo) data is included.
+> **Real NCDC data, as of 26 November 2026.** All figures were read automatically from the situation reports of the Nigeria Centre for Disease Control and Prevention (NCDC) and checked by the pipeline's validation rules. The four most recent weeks may still be revised by later reports. No synthetic (demo) data is included.
 
 This page is rebuilt automatically after every database load, so every number below comes from the database at the time of writing. The research questions (RQ1 to RQ4) are the ones in the thesis.
 
 ## 1. Data collected
 
-The pipeline downloaded 913 NCDC report files. It read 520 of them automatically, set aside 248 (mostly reports from before the 2021 to 2026 study period) and sent 131 to the manual queue because their layout could not be read with confidence. Table 1 shows what was stored for each disease. Lassa fever had the most complete record, with 237 weeks. This is because NCDC publishes a Lassa fever report almost every week, while the other diseases are reported in short runs during outbreaks or once a month.
+The pipeline downloaded 915 NCDC report files. It read 522 of them automatically, set aside 248 (mostly reports from before the 2021 to 2026 study period) and sent 131 to the manual queue because their layout could not be read with confidence. Table 1 shows what was stored for each disease. Lassa fever had the most complete record, with 239 weeks. This is because NCDC publishes a Lassa fever report almost every week, while the other diseases are reported in short runs during outbreaks or once a month.
 
 Table 1- National figures stored for each disease
 
@@ -15,7 +15,7 @@ Table 1- National figures stored for each disease
 | Cerebrospinal meningitis | 29 May 2023 | 31 Mar 2025 | 8 | yes |
 | Cholera | 29 Mar 2021 | 24 Feb 2025 | 77 | yes |
 | Diphtheria | 27 Nov 2023 | 12 Jan 2026 | 14 | yes |
-| Lassa fever | 04 Jan 2021 | 26 Oct 2026 | 237 | yes |
+| Lassa fever | 04 Jan 2021 | 09 Nov 2026 | 239 | yes |
 | Measles | 30 Jun 2025 | 28 Sep 2026 | 16 | yes |
 | Mpox | 24 Jan 2022 | 28 Oct 2024 | 105 | yes |
 | Yellow fever | 25 Jan 2021 | 26 May 2025 | 40 | yes |
@@ -23,12 +23,14 @@ Table 1- National figures stored for each disease
 
 ## 2. Pipeline runs (RQ1)
 
-Out of 7 recorded runs, 3 finished successfully, 4 finished partly (the run completed but at least one report could not be read or loaded) and 0 failed. A partial run still saves everything it could read, and the reports it could not read are listed for review.
+Out of 9 recorded runs, 5 finished successfully, 4 finished partly (the run completed but at least one report could not be read or loaded) and 0 failed. A partial run still saves everything it could read, and the reports it could not read are listed for review.
 
 Table 2- The ten most recent pipeline runs
 
 | Started (UTC) | Type | Status | New files | Rows read | Rows loaded | Rows flagged | Rows held back | Revisions | Seconds |
 |---|---|---|---|---|---|---|---|---|---|
+| 2026-11-26 08:50 | manual | success | 0 | 0 | 0 | 0 | 0 | 0 | 206 |
+| 2026-11-25 15:38 | daily_check | success | 2 | 39 | 39 | 0 | 0 | 0 | 174 |
 | 2026-11-23 16:00 | scheduled | success | 0 | 0 | 0 | 0 | 0 | 0 | 207 |
 | 2026-11-19 18:31 | manual | success | 0 | 1 | 0 | 0 | 1 | 0 | 272 |
 | 2026-11-19 17:31 | manual | partial | 0 | 311 | 307 | 27 | 4 | 7 | 1977 |
@@ -58,7 +60,7 @@ Table 4- Warnings on loaded rows
 
 | Warning | Rows |
 |---|---|
-| R12_COMPLETENESS | 6734 |
+| R12_COMPLETENESS | 6771 |
 | R07_STATE_SUM | 154 |
 | R06_CUM_DECREASE | 130 |
 | R05_CFR_MISMATCH | 50 |
@@ -93,7 +95,7 @@ Fig. 2- Lassa fever trend and seasonal pattern (STL). Source: Collins C. Akagha 
 
 ## 6. Outbreak alerts (RQ3)
 
-I ran the EARS C1, C2 and C3 checks (simple statistical tests from the US CDC's Early Aberration Reporting System that compare a week with the weeks before it) on every national series, and a SARIMA residual check on every series with more than two years of weekly data. Together they flagged 206 weeks out of 1,562 checks (Fig. 3).
+I ran the EARS C1, C2 and C3 checks (simple statistical tests from the US CDC's Early Aberration Reporting System that compare a week with the weeks before it) on every national series, and a SARIMA residual check on every series with more than two years of weekly data. Together they flagged 206 weeks out of 1,570 checks (Fig. 3).
 
 ![Alerts](figures/03_alerts_by_disease.png)
 
@@ -113,10 +115,10 @@ Table 6- Alert checks by disease and method
 | Diphtheria | EARS C1 | 3 | 12 |
 | Diphtheria | EARS C2 | 5 | 12 |
 | Diphtheria | EARS C3 | 8 | 12 |
-| Lassa fever | EARS C1 | 14 | 231 |
-| Lassa fever | EARS C2 | 29 | 229 |
-| Lassa fever | EARS C3 | 45 | 227 |
-| Lassa fever | SARIMA residual | 14 | 193 |
+| Lassa fever | EARS C1 | 14 | 233 |
+| Lassa fever | EARS C2 | 29 | 231 |
+| Lassa fever | EARS C3 | 45 | 229 |
+| Lassa fever | SARIMA residual | 14 | 195 |
 | Mpox | EARS C1 | 5 | 94 |
 | Mpox | EARS C2 | 10 | 94 |
 | Mpox | EARS C3 | 18 | 94 |
@@ -129,7 +131,7 @@ I compared seven forecasting methods: a seasonal naive benchmark (the same week 
 
 ### Lassa fever
 
-The models were trained on confirmed cases. Each was tested over 55 forecast origins. One week ahead, the most accurate method was **SVR** with a MASE of 0.557 and an average error of 6.8 cases per week. The next best was Negative binomial (MASE 0.602), so the best method was 7.5% more accurate. For comparison, SARIMA scored 0.619 and the seasonal naive benchmark scored 1.093. 6 of the 7 methods beat the seasonal naive benchmark one week ahead.
+The models were trained on confirmed cases. Each was tested over 55 forecast origins. One week ahead, the most accurate method was **SVR** with a MASE of 0.594 and an average error of 7.2 cases per week. The next best was Negative binomial (MASE 0.606), so the best method was 1.9% more accurate. For comparison, SARIMA scored 0.636 and the seasonal naive benchmark scored 1.109. 6 of the 7 methods beat the seasonal naive benchmark one week ahead.
 
 ![MASE Lassa fever](figures/04_lassa_mase.png)
 
@@ -139,13 +141,13 @@ Table 7- Lassa fever: MASE by method and weeks ahead
 
 | Method | MASE 1 wk | MASE 2 wk | MASE 3 wk | MASE 4 wk |
 |---|---|---|---|---|
-| SVR | 0.557 | 0.632 | 0.715 | 0.755 |
-| Negative binomial | 0.602 | 0.713 | 0.760 | 0.798 |
-| SARIMA | 0.619 | 0.711 | 0.793 | 0.861 |
-| Random Forest | 0.631 | 0.722 | 0.742 | 0.691 |
-| Gradient Boosting | 0.657 | 0.739 | 0.836 | 0.833 |
-| XGBoost | 0.706 | 0.762 | 0.802 | 0.757 |
-| Seasonal naive | 1.093 | 1.109 | 1.125 | 1.134 |
+| SVR | 0.594 | 0.685 | 0.722 | 0.792 |
+| Negative binomial | 0.606 | 0.722 | 0.763 | 0.808 |
+| SARIMA | 0.636 | 0.740 | 0.831 | 0.886 |
+| Random Forest | 0.650 | 0.741 | 0.765 | 0.701 |
+| Gradient Boosting | 0.665 | 0.715 | 0.753 | 0.788 |
+| XGBoost | 0.700 | 0.704 | 0.725 | 0.809 |
+| Seasonal naive | 1.109 | 1.117 | 1.138 | 1.142 |
 
 
 At the 5% level, the Diebold-Mariano test showed that Seasonal naive (p = 0.013) was significantly less accurate than SARIMA. For the other methods the difference from SARIMA could be due to chance, so I cannot say that any of them is truly better or worse than SARIMA.
@@ -154,12 +156,12 @@ Table 8- Lassa fever: one-week-ahead accuracy and Diebold-Mariano test against S
 
 | Method | MAE | RMSE | MASE | DM statistic | p-value |
 |---|---|---|---|---|---|
-| SVR | 6.753 | 9.150 | 0.557 | -1.110 | 0.272 |
-| Negative binomial | 7.300 | 9.656 | 0.602 | -1.007 | 0.318 |
-| Random Forest | 7.653 | 9.529 | 0.631 | -0.752 | 0.456 |
-| Gradient Boosting | 7.965 | 10.048 | 0.657 | -0.477 | 0.635 |
-| XGBoost | 8.556 | 10.687 | 0.706 | -0.017 | 0.986 |
-| Seasonal naive | 13.255 | 18.254 | 1.093 | 2.577 | 0.013 |
+| SVR | 7.153 | 9.289 | 0.594 | -1.282 | 0.205 |
+| Negative binomial | 7.294 | 9.656 | 0.606 | -1.054 | 0.297 |
+| Random Forest | 7.829 | 9.592 | 0.650 | -0.744 | 0.460 |
+| Gradient Boosting | 8.002 | 10.073 | 0.665 | -0.474 | 0.638 |
+| XGBoost | 8.421 | 10.386 | 0.700 | -0.268 | 0.790 |
+| Seasonal naive | 13.345 | 18.282 | 1.109 | 2.580 | 0.013 |
 
 
 ![Forecast Lassa fever](figures/05_lassa_forecast.png)
@@ -186,13 +188,13 @@ Table 9- Diseases without a forecast
 
 The forecasting results can be reproduced. Every method that uses randomness (Random Forest, Gradient Boosting and XGBoost) uses a fixed random seed (42), and the weekly figures the models were trained on are saved with this page in [`results/data`](data). The settings and the code version are saved in [`settings.json`](data/settings.json). Because NCDC revises its figures and the database is updated every week, a re-run on the live database can differ, but a re-run on the saved snapshot should give the same numbers.
 
-When this page was built, I re-ran the full comparison from the snapshot without the database (`scripts/reproduce_results.py`) and compared the two accuracy tables (Table 10). The re-run used this processor: AMD EPYC 9V74 80-Core Processor.
+When this page was built, I re-ran the full comparison from the snapshot without the database (`scripts/reproduce_results.py`) and compared the two accuracy tables (Table 10). The re-run used this processor: AMD EPYC 9V45 96-Core Processor.
 
 Table 10- Reproducibility check
 
 | Disease | Numbers identical | Largest MASE difference | Same ranking of methods | Same test results |
 |---|---|---|---|---|
-| Lassa fever | yes | 0.00% | yes | yes |
+| Lassa fever | no | 0.14% | yes | yes |
 
 
 Upon further testing, I re-ran the comparison on nine machines with six different processor models. On five of them (Intel Xeon Platinum 8370C and 8573C, Intel Xeon 6975P, and AMD EPYC 9V45 and 9V74) every number was identical. On the sixth (AMD EPYC 7763), Random Forest and Gradient Boosting gave slightly different numbers, because tiny rounding differences in the calculations can change where a decision tree splits. This changed MASE by at most 0.25% and did not change the ranking of the methods or the result of any Diebold-Mariano test. This means the conclusions can be reproduced on any machine, and the exact numbers on most processors.
