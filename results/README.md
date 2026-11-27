@@ -1,6 +1,6 @@
 # Results
 
-> **Real NCDC data, as of 26 November 2026.** All figures were read automatically from the situation reports of the Nigeria Centre for Disease Control and Prevention (NCDC) and checked by the pipeline's validation rules. The four most recent weeks may still be revised by later reports. No synthetic (demo) data is included.
+> **Real NCDC data, as of 27 November 2026.** All figures were read automatically from the situation reports of the Nigeria Centre for Disease Control and Prevention (NCDC) and checked by the pipeline's validation rules. The four most recent weeks may still be revised by later reports. No synthetic (demo) data is included.
 
 This page is rebuilt automatically after every database load, so every number below comes from the database at the time of writing. The research questions (RQ1 to RQ4) are the ones in the thesis.
 
@@ -23,12 +23,13 @@ Table 1- National figures stored for each disease
 
 ## 2. Pipeline runs (RQ1)
 
-Out of 10 recorded runs, 6 finished successfully, 4 finished partly (the run completed but at least one report could not be read or loaded) and 0 failed. A partial run still saves everything it could read, and the reports it could not read are listed for review.
+Out of 11 recorded runs, 7 finished successfully, 4 finished partly (the run completed but at least one report could not be read or loaded) and 0 failed. A partial run still saves everything it could read, and the reports it could not read are listed for review.
 
 Table 2- The ten most recent pipeline runs
 
 | Started (UTC) | Type | Status | New files | Rows read | Rows loaded | Rows flagged | Rows held back | Revisions | Seconds |
 |---|---|---|---|---|---|---|---|---|---|
+| 2026-11-27 15:07 | daily_check | success | 0 | 0 | 0 | 0 | 0 | 0 | 85 |
 | 2026-11-26 15:18 | daily_check | success | 0 | 0 | 0 | 0 | 0 | 0 | 81 |
 | 2026-11-26 08:50 | manual | success | 0 | 0 | 0 | 0 | 0 | 0 | 206 |
 | 2026-11-25 15:38 | daily_check | success | 2 | 39 | 39 | 0 | 0 | 0 | 174 |
@@ -38,7 +39,6 @@ Table 2- The ten most recent pipeline runs
 | 2026-11-19 13:17 | manual | partial | 0 | 5732 | 5439 | 84 | 293 | 17 | 15154 |
 | 2026-11-19 10:34 | manual | partial | 13 | 11283 | 10878 | 389 | 360 | 2059 | 1513 |
 | 2026-11-19 10:07 | backfill | partial | 892 | 331 | 283 | 31 | 48 | 0 | 5474 |
-| 2026-11-19 09:34 | backfill | success | 21 | 21 | 20 | 4 | 1 | 0 | 218 |
 
 
 ## 3. Data quality
