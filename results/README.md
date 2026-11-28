@@ -1,12 +1,12 @@
 # Results
 
-> **Real NCDC data, as of 27 November 2026.** All figures were read automatically from the situation reports of the Nigeria Centre for Disease Control and Prevention (NCDC) and checked by the pipeline's validation rules. The four most recent weeks may still be revised by later reports. No synthetic (demo) data is included.
+> **Real NCDC data, as of 28 November 2026.** All figures were read automatically from the situation reports of the Nigeria Centre for Disease Control and Prevention (NCDC) and checked by the pipeline's validation rules. The four most recent weeks may still be revised by later reports. No synthetic (demo) data is included.
 
 This page is rebuilt automatically after every database load, so every number below comes from the database at the time of writing. The research questions (RQ1 to RQ4) are the ones in the thesis.
 
 ## 1. Data collected
 
-The pipeline downloaded 915 NCDC report files. It read 522 of them automatically, set aside 248 (mostly reports from before the 2021 to 2026 study period) and sent 131 to the manual queue because their layout could not be read with confidence. Table 1 shows what was stored for each disease. Lassa fever had the most complete record, with 239 weeks. This is because NCDC publishes a Lassa fever report almost every week, while the other diseases are reported in short runs during outbreaks or once a month.
+The pipeline downloaded 916 NCDC report files. It read 523 of them automatically, set aside 248 (mostly reports from before the 2021 to 2026 study period) and sent 131 to the manual queue because their layout could not be read with confidence. Table 1 shows what was stored for each disease. Lassa fever had the most complete record, with 239 weeks. This is because NCDC publishes a Lassa fever report almost every week, while the other diseases are reported in short runs during outbreaks or once a month.
 
 Table 1- National figures stored for each disease
 
@@ -16,19 +16,20 @@ Table 1- National figures stored for each disease
 | Cholera | 29 Mar 2021 | 24 Feb 2025 | 77 | yes |
 | Diphtheria | 27 Nov 2023 | 12 Jan 2026 | 14 | yes |
 | Lassa fever | 04 Jan 2021 | 09 Nov 2026 | 239 | yes |
-| Measles | 30 Jun 2025 | 28 Sep 2026 | 16 | yes |
+| Measles | 30 Jun 2025 | 26 Oct 2026 | 17 | yes |
 | Mpox | 24 Jan 2022 | 28 Oct 2024 | 105 | yes |
 | Yellow fever | 25 Jan 2021 | 26 May 2025 | 40 | yes |
 
 
 ## 2. Pipeline runs (RQ1)
 
-Out of 11 recorded runs, 7 finished successfully, 4 finished partly (the run completed but at least one report could not be read or loaded) and 0 failed. A partial run still saves everything it could read, and the reports it could not read are listed for review.
+Out of 12 recorded runs, 8 finished successfully, 4 finished partly (the run completed but at least one report could not be read or loaded) and 0 failed. A partial run still saves everything it could read, and the reports it could not read are listed for review.
 
 Table 2- The ten most recent pipeline runs
 
 | Started (UTC) | Type | Status | New files | Rows read | Rows loaded | Rows flagged | Rows held back | Revisions | Seconds |
 |---|---|---|---|---|---|---|---|---|---|
+| 2026-11-28 14:14 | daily_check | success | 1 | 1 | 1 | 0 | 0 | 0 | 90 |
 | 2026-11-27 15:07 | daily_check | success | 0 | 0 | 0 | 0 | 0 | 0 | 85 |
 | 2026-11-26 15:18 | daily_check | success | 0 | 0 | 0 | 0 | 0 | 0 | 81 |
 | 2026-11-26 08:50 | manual | success | 0 | 0 | 0 | 0 | 0 | 0 | 206 |
@@ -38,7 +39,6 @@ Table 2- The ten most recent pipeline runs
 | 2026-11-19 17:31 | manual | partial | 0 | 311 | 307 | 27 | 4 | 7 | 1977 |
 | 2026-11-19 13:17 | manual | partial | 0 | 5732 | 5439 | 84 | 293 | 17 | 15154 |
 | 2026-11-19 10:34 | manual | partial | 13 | 11283 | 10878 | 389 | 360 | 2059 | 1513 |
-| 2026-11-19 10:07 | backfill | partial | 892 | 331 | 283 | 31 | 48 | 0 | 5474 |
 
 
 ## 3. Data quality
@@ -61,7 +61,7 @@ Table 4- Warnings on loaded rows
 
 | Warning | Rows |
 |---|---|
-| R12_COMPLETENESS | 6771 |
+| R12_COMPLETENESS | 6774 |
 | R07_STATE_SUM | 154 |
 | R06_CUM_DECREASE | 130 |
 | R05_CFR_MISMATCH | 50 |
@@ -189,7 +189,7 @@ Table 9- Diseases without a forecast
 
 The forecasting results can be reproduced. Every method that uses randomness (Random Forest, Gradient Boosting and XGBoost) uses a fixed random seed (42), and the weekly figures the models were trained on are saved with this page in [`results/data`](data). The settings and the code version are saved in [`settings.json`](data/settings.json). Because NCDC revises its figures and the database is updated every week, a re-run on the live database can differ, but a re-run on the saved snapshot should give the same numbers.
 
-When this page was built, I re-ran the full comparison from the snapshot without the database (`scripts/reproduce_results.py`) and compared the two accuracy tables (Table 10). The re-run used this processor: INTEL(R) XEON(R) PLATINUM 8573C.
+When this page was built, I re-ran the full comparison from the snapshot without the database (`scripts/reproduce_results.py`) and compared the two accuracy tables (Table 10). The re-run used this processor: AMD EPYC 9V74 80-Core Processor.
 
 Table 10- Reproducibility check
 
